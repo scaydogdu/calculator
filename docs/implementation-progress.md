@@ -87,3 +87,9 @@ Read `docs/qa/qa-round-2.md` and the externally corrected Enter rule in the keyp
 - Minor 2: README now links QA round 2's actual browser/mobile/dark-mode evidence instead of claiming browser validation never occurred, and QA scripts/reports are included in the commit unchanged. A new screenshot and real-browser rerun of the keyboard fixes remain blocked by this session's saved browser permission; no screenshot is fabricated.
 
 Round-2 final verification: lint, typecheck and build passed; all 88 tests passed (including the two majors first observed failing), line coverage 99.2%, statement coverage 98.03%, branch coverage 97.05%; independent API contract Passed 40, Failed 0. SHA-256 comparison confirms backend, src/api and every QA file are unchanged. QA files are staged verbatim as explicitly requested, together with the externally supplied corrected Enter rule.
+
+## Task 12 — GitHub publication, 2026-10-30
+
+The user authorized publication and explicitly selected public visibility for `scaydogdu/calculator`. Created https://github.com/scaydogdu/calculator with default branch `main`; retained the original local feature branch. README repository link and CI badge now use the authenticated owner `scaydogdu`. The initial SSH push was rejected because no accepted SSH key was available; HTTPS push succeeded using the existing GitHub CLI authentication. No credentials were committed.
+
+Pre-publication checks passed: backend go vet/race tests, frontend lint/typecheck, 88 tests and production build. Initial published commit `8a9a13dfb0c675e7252441bbd3c732eac41bf7e9` matched the remote main SHA. GitHub Actions run https://github.com/scaydogdu/calculator/actions/runs/41096597433 completed successfully: backend, frontend and Docker jobs all passed. This publication record changes documentation only. No application hosting deployment was requested.

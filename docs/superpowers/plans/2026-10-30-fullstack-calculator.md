@@ -1925,13 +1925,13 @@ git add README.md docs && git commit -m "docs: README, coverage report, prompts"
 
 ### Task 12: Publish to GitHub (ask the user first — this publishes code)
 
-- [ ] **Step 1: Confirm the repo name and visibility with the user**, then:
+- [x] **Step 1: Confirm the repo name and visibility with the user**, then:
 
 ```bash
 gh repo create calculator --public --source . --remote origin --push
 ```
 
-- [ ] **Step 2: Check that CI passes** with `gh run list --limit 1`, then fix the README badge owner and push again.
+- [x] **Step 2: Check that CI passes** with `gh run list --limit 1`, then fix the README badge owner and push again.
 
 ---
 
@@ -1943,4 +1943,4 @@ gh repo create calculator --public --source . --remote origin --push
 
 ## Execution status (2026-10-30)
 
-Tasks 0–11 implemented locally; Task 8 browser/screenshot verification remains blocked by denied local-browser permission. Go was already installed, so Task 0 did not run Homebrew installation. Independent API acceptance tests passed 40/40 on both the local server and the Docker container. See `docs/implementation-progress.md` for measured results and recorded implementation corrections. Task 12 was intentionally not started. Checkmarks describe completed work or already-satisfied prerequisites; browser checks remain unchecked.
+Tasks 0–11 implemented locally; Task 8 browser/screenshot verification remains blocked by denied local-browser permission. Go was already installed, so Task 0 did not run Homebrew installation. Independent API acceptance tests passed 40/40 on both the local server and the Docker container. See `docs/implementation-progress.md` for measured results and recorded implementation corrections. Task 12 was subsequently completed with explicit user authorization; see the GitHub publication entry in docs/implementation-progress.md. Checkmarks describe completed work or already-satisfied prerequisites; browser checks remain unchecked.
