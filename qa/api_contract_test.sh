@@ -76,6 +76,21 @@ ok "percentage (a% of b)" '{"operation":"percentage","operands":[15,200]}' '.res
 ok "scientific notation input" '{"operation":"multiply","operands":[1e3,2]}' '.result == 2000'
 ok "whitespace around body" '  {"operation":"add","operands":[1,1]}  ' '.result == 2'
 
+echo "## Expression precedence"
+EVAL="$BASE/api/v1/evaluate"
+check "multiply before add" POST "$EVAL" '{"operands":[2,3,4],"operators":["add","multiply"]}' 200 '.result == 14'
+check "powers before multiply" POST "$EVAL" '{"operands":[2,3,2],"operators":["multiply","power"]}' 200 '.result == 18'
+check "right-associative powers" POST "$EVAL" '{"operands":[2,3,2],"operators":["power","power"]}' 200 '.result == 512'
+check "left-associative division" POST "$EVAL" '{"operands":[100,10,2],"operators":["divide","divide"]}' 200 '.result == 5'
+check "signed operand" POST "$EVAL" '{"operands":[-2,2],"operators":["power"]}' 200 '.result == 4'
+check "expression arity" POST "$EVAL" '{"operands":[2,3,4],"operators":["add"]}' 400 '.error.code == "invalid_expression"'
+check "expression null operand" POST "$EVAL" '{"operands":[2,null],"operators":["add"]}' 400 '.error.code == "invalid_json"'
+check "expression unknown operator" POST "$EVAL" '{"operands":[2,3],"operators":["modulo"]}' 400 '.error.code == "invalid_expression"'
+check "expression division by zero" POST "$EVAL" '{"operands":[2,3,0],"operators":["add","divide"]}' 422 '.error.code == "division_by_zero"'
+check "expression non-real" POST "$EVAL" '{"operands":[-8,0.5],"operators":["power"]}' 422 '.error.code == "non_real_result"'
+check "expression overflow" POST "$EVAL" '{"operands":[2,1024],"operators":["power"]}' 422 '.error.code == "result_overflow"'
+check "GET evaluate" GET "$EVAL" "" 405 '.error.code == "method_not_allowed"'
+
 echo "## Math errors (422)"
 err "divide by zero" '{"operation":"divide","operands":[1,0]}' 422 division_by_zero
 err "zero divided by zero" '{"operation":"divide","operands":[0,0]}' 422 division_by_zero
@@ -105,6 +120,7 @@ check "empty body" POST "$CALC" "" 400 '.error.code == "invalid_json"'
 big=$(mktemp)
 python3 -c 'import sys; sys.stdout.write("{\"operation\":\"add\",\"operands\":[" + ",".join(["1"]*600000) + "]}")' >"$big"
 check "body over 1 MiB" POST "$CALC" "@$big" 413 '.error.code == "request_too_large"'
+check "expression body over 1 MiB" POST "$EVAL" "@$big" 413 '.error.code == "request_too_large"'
 rm -f "$big"
 
 echo "## Routing"

@@ -1,10 +1,8 @@
 export type Operation = 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'sqrt' | 'percentage';
 
-export interface CalculateResponse {
-  operation: Operation;
-  operands: number[];
-  result: number;
-}
+export type BinaryOp = Exclude<Operation, 'sqrt'>;
+export type Calculation = { operation: Operation; operands: number[] } | { operands: number[]; operators: BinaryOp[] };
+export interface CalculateResponse { result: number }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -22,15 +20,15 @@ export class ApiError extends Error {
   }
 }
 
-export type CalculateFn = (operation: Operation, operands: number[], signal?: AbortSignal) => Promise<CalculateResponse>;
+export type CalculateFn = (request: Calculation, signal?: AbortSignal) => Promise<CalculateResponse>;
 
-export const calculate: CalculateFn = async (operation, operands, signal) => {
+export const calculate: CalculateFn = async (request, signal) => {
   let response: Response;
   try {
-    response = await fetch('/api/v1/calculate', {
+    response = await fetch('operators' in request ? '/api/v1/evaluate' : '/api/v1/calculate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ operation, operands }),
+      body: JSON.stringify(request),
       signal,
     });
   } catch (err) {
@@ -50,5 +48,5 @@ export const calculate: CalculateFn = async (operation, operands, signal) => {
   if (!isRecord(body) || typeof body.result !== 'number' || !Number.isFinite(body.result)) {
     throw new ApiError('invalid_response', 'The calculator service sent an invalid response. Try again.', response.status);
   }
-  return { operation, operands, result: body.result };
+  return { result: body.result };
 };

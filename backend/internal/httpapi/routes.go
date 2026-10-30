@@ -9,6 +9,8 @@ import (
 
 func addRoutes(mux *http.ServeMux, logger *slog.Logger, staticDir string) {
 	mux.Handle("POST /api/v1/calculate", handleCalculate())
+	mux.Handle("POST /api/v1/evaluate", handleEvaluate())
+	mux.Handle("/api/v1/evaluate", handleMethodNotAllowed(http.MethodPost))
 	mux.Handle("/api/v1/calculate", handleMethodNotAllowed(http.MethodPost))
 	mux.Handle("GET /healthz", handleHealth())
 	mux.Handle("/api/", handleNotFound())

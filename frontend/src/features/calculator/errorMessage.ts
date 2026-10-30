@@ -1,6 +1,7 @@
 import { ApiError } from '../../api/calculator';
 
 const messages = new Map([
+  ['invalid_expression', 'Check the expression and try again.'],
   ['division_by_zero', "You can't divide by zero."],
   ['negative_sqrt', 'Square root needs a number of 0 or more.'],
   ['non_real_result', 'This calculation has no real-number result.'],

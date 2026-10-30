@@ -12,11 +12,20 @@ describe('calculate', () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ operation: 'add', operands: [2, 3], result: 5 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await expect(calculate('add', [2, 3])).resolves.toEqual({ operation: 'add', operands: [2, 3], result: 5 });
+    await expect(calculate({ operation: 'add', operands: [2, 3] })).resolves.toEqual({ result: 5 });
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/calculate',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ operation: 'add', operands: [2, 3] }) }),
     );
+  });
+
+  it('posts complete expressions to the evaluator', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ result: 14 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const request = { operands: [2, 3, 4], operators: ['add', 'multiply'] as const };
+    const signal = new AbortController().signal;
+    await expect(calculate({ ...request, operators: [...request.operators] }, signal)).resolves.toEqual({ result: 14 });
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/evaluate', expect.objectContaining({ body: JSON.stringify(request), signal }));
   });
 
   it('throws ApiError carrying the server error code and message', async () => {
@@ -24,19 +33,19 @@ describe('calculate', () => {
       jsonResponse({ error: { code: 'division_by_zero', message: 'division by zero' } }, 422),
     ));
 
-    const error = await calculate('divide', [1, 0]).catch((e: unknown) => e);
+    const error = await calculate({ operation: 'divide', operands: [1, 0] }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ code: 'division_by_zero', message: 'division by zero', status: 422 });
   });
 
   it('falls back to a generic error when the body is not JSON', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Bad Gateway', { status: 502 })));
-    await expect(calculate('add', [1, 2])).rejects.toMatchObject({ code: 'unknown_error', status: 502 });
+    await expect(calculate({ operation: 'add', operands: [1, 2] })).rejects.toMatchObject({ code: 'unknown_error', status: 502 });
   });
 
   it('reports network failures as ApiError', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
-    await expect(calculate('add', [1, 2])).rejects.toMatchObject({
+    await expect(calculate({ operation: 'add', operands: [1, 2] })).rejects.toMatchObject({
       code: 'network_error',
       message: 'Could not reach the calculator service.',
     });
@@ -47,7 +56,7 @@ describe('calculate', () => {
     controller.abort();
     const abortError = new DOMException('Aborted', 'AbortError');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError));
-    await expect(calculate('add', [1, 2], controller.signal)).rejects.toBe(abortError);
+    await expect(calculate({ operation: 'add', operands: [1, 2] }, controller.signal)).rejects.toBe(abortError);
   });
 });
 
@@ -59,14 +68,14 @@ describe('success response validation', () => {
     { operation: 'add', operands: [2, 3], result: null },
   ])('rejects a missing or non-numeric result: %j', async (body) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(body)));
-    await expect(calculate('add', [2, 3])).rejects.toMatchObject({ code: 'invalid_response', status: 200 });
+    await expect(calculate({ operation: 'add', operands: [2, 3] })).rejects.toMatchObject({ code: 'invalid_response', status: 200 });
   });
   it('rejects successful non-JSON bodies', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>Proxy failure</html>', { status: 200 })));
-    await expect(calculate('add', [2, 3])).rejects.toMatchObject({ code: 'invalid_response' });
+    await expect(calculate({ operation: 'add', operands: [2, 3] })).rejects.toMatchObject({ code: 'invalid_response' });
   });
   it('rejects a JSON number that overflows during parsing', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"operation":"add","operands":[2,3],"result":1e400}', { status: 200 })));
-    await expect(calculate('add', [2, 3])).rejects.toMatchObject({ code: 'invalid_response' });
+    await expect(calculate({ operation: 'add', operands: [2, 3] })).rejects.toMatchObject({ code: 'invalid_response' });
   });
 });

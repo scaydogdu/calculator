@@ -24,9 +24,8 @@ export function Calculator({ calculate = apiCalculate }: { calculate?: Calculate
 
   return (
     <section className="calculator" aria-label="Calculator" aria-busy={busy}>
-      <p className="evaluation-mode">Evaluates left to right · 2 + 3 × 4 = 20</p>
       <Display expression={state.expression} entry={state.entry} error={state.error} busy={busy} />
-      <Keypad onAction={send} operator={state.operator} overwrite={state.overwrite} busy={busy} />
+      <Keypad onAction={send} operator={state.operators.at(-1) ?? null} overwrite={state.overwrite} busy={busy} />
     </section>
   );
 }

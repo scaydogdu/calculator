@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type CalculateFn, type CalculateResponse } from '../../api/calculator';
 import { useCalculator } from './useCalculator';
 
-const sum: CalculateResponse = { operation: 'add', operands: [2, 3], result: 5 };
+const sum: CalculateResponse = { result: 5 };
 const never = () => new Promise<CalculateResponse>(() => {});
 function setup(calculate: CalculateFn) {
   const hook = renderHook(() => useCalculator(calculate));
@@ -27,7 +27,7 @@ describe('event-driven calculator requests', () => {
     act(() => result.current.send({ type: 'clear' }));
     await act(async () => enterSum());
     expect(calculate).toHaveBeenCalledTimes(2);
-    expect(calculate).toHaveBeenLastCalledWith('add', [2, 3], expect.any(AbortSignal));
+    expect(calculate).toHaveBeenLastCalledWith({ operands: [2, 3], operators: ['add'] }, expect.any(AbortSignal));
   });
 
   it('shows network errors immediately without retries or offline queuing', async () => {
@@ -47,7 +47,7 @@ describe('event-driven calculator requests', () => {
     const { result, enterSum } = setup(calculate);
     act(enterSum);
     act(() => result.current.send({ type: 'clear' }));
-    expect(calculate.mock.calls[0][2].aborted).toBe(true);
+    expect(calculate.mock.calls[0][1].aborted).toBe(true);
     await act(async () => {
       result.current.send({ type: 'digit', digit: '9' });
       result.current.send({ type: 'sqrt' });
@@ -69,7 +69,7 @@ describe('event-driven calculator requests', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(19_999); });
     expect(result.current.state.pending).not.toBeNull();
     await act(async () => { await vi.advanceTimersByTimeAsync(1); });
-    expect(calculate.mock.calls[0][2].aborted).toBe(true);
+    expect(calculate.mock.calls[0][1].aborted).toBe(true);
     expect(result.current.state.pending).toBeNull();
     expect(result.current.state.error).toContain('took too long');
     await act(async () => enterSum());
@@ -85,7 +85,7 @@ describe('event-driven calculator requests', () => {
     const { unmount, enterSum } = setup(calculate);
     act(enterSum);
     unmount();
-    expect(calculate.mock.calls[0][2]?.aborted).toBe(true);
+    expect(calculate.mock.calls[0][1]?.aborted).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -95,6 +95,6 @@ describe('event-driven calculator requests', () => {
     const { enterSum } = setup(calculate);
     await act(async () => enterSum());
     expect(vi.getTimerCount()).toBe(0);
-    expect(calculate.mock.calls[0][2].aborted).toBe(false);
+    expect(calculate.mock.calls[0][1].aborted).toBe(false);
   });
 });

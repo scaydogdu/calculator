@@ -51,7 +51,7 @@ export function useCalculator(calculate: CalculateFn) {
     // AC, deadline expiry or unmount, even if a transport ignores abort.
     void (async () => {
       try {
-        const result = await calculate(pending.operation, pending.operands, controller.signal);
+        const result = await calculate(pending.request, controller.signal);
         if (active.current === request) update({ type: 'resolved', result: result.result });
       } catch (error) {
         if (active.current === request) update({ type: 'failed', message: errorMessage(error) });

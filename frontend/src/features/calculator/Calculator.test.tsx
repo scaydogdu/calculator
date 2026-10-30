@@ -5,19 +5,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { type CalculateFn, type CalculateResponse } from '../../api/calculator';
 import { Calculator } from './Calculator';
 
-const sum: CalculateResponse = { operation: 'add', operands: [2, 3], result: 5 };
+const sum: CalculateResponse = { result: 5 };
 const result = () => screen.getByRole('status', { name: 'Result' });
 function setup(calculate: CalculateFn = vi.fn().mockResolvedValue(sum)) {
   return { user: userEvent.setup(), ...render(<Calculator calculate={calculate} />) };
 }
 
 describe('calculator integration and accessibility', () => {
-  it('renders a labelled keypad, live result and visible evaluation semantics', () => {
+  it('renders a labelled keypad, live result', () => {
     const calculate = vi.fn();
     setup(calculate);
     expect(result()).toHaveTextContent(/^0$/);
     expect(result()).toHaveAttribute('aria-live', 'polite');
-    expect(screen.getByText('Evaluates left to right · 2 + 3 × 4 = 20')).toBeVisible();
     for (const name of ['All clear', 'Backspace', 'Percent of', 'Divide', 'Square root', 'Power', 'Toggle sign', 'Multiply', 'Subtract', 'Add', 'Decimal point', 'Equals', ...'0123456789']) {
       expect(screen.getByRole('button', { name })).toHaveAttribute('type', 'button');
     }
@@ -40,7 +39,18 @@ describe('calculator integration and accessibility', () => {
     expect(screen.getByLabelText('Expression')).toHaveTextContent('2 + 3 =');
     expect(equals).toHaveFocus();
     expect(equals).not.toHaveAttribute('aria-disabled');
-    expect(calculate).toHaveBeenCalledExactlyOnceWith('add', [2, 3], expect.any(AbortSignal));
+    expect(calculate).toHaveBeenCalledExactlyOnceWith({ operands: [2, 3], operators: ['add'] }, expect.any(AbortSignal));
+  });
+
+  it('collects an expression until Equals and displays the backend precedence result', async () => {
+    const calculate = vi.fn().mockResolvedValue({ result: 14 });
+    const { user } = setup(calculate);
+    await user.keyboard('2+3*4');
+    expect(calculate).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Expression')).toHaveTextContent('2 + 3 × 4');
+    await user.keyboard('=');
+    await waitFor(() => expect(result()).toHaveTextContent(/^14$/));
+    expect(calculate).toHaveBeenCalledExactlyOnceWith({ operands: [2, 3, 4], operators: ['add', 'multiply'] }, expect.any(AbortSignal));
   });
 
   it('chains using the raw backend result and preserves unary operations inside an expression', async () => {
@@ -51,7 +61,7 @@ describe('calculator integration and accessibility', () => {
     await waitFor(() => expect(result()).toHaveTextContent(/^4$/));
     await user.keyboard('=');
     await waitFor(() => expect(result()).toHaveTextContent(/^13$/));
-    expect(calculate).toHaveBeenNthCalledWith(2, 'add', [9, 4], expect.any(AbortSignal));
+    expect(calculate).toHaveBeenNthCalledWith(2, { operands: [9, 4], operators: ['add'] }, expect.any(AbortSignal));
   });
 
   it('keeps raw precision when continuing from a rounded scientific display', async () => {
@@ -65,7 +75,7 @@ describe('calculator integration and accessibility', () => {
     await waitFor(() => expect(result()).toHaveTextContent(/^-1\.76366841446e\+13$/));
     await user.keyboard('*7=');
     await waitFor(() => expect(result()).toHaveTextContent(/^-123456789012345$/));
-    expect(calculate).toHaveBeenNthCalledWith(2, 'multiply', [raw, 7], expect.any(AbortSignal));
+    expect(calculate).toHaveBeenNthCalledWith(2, { operands: [raw, 7], operators: ['multiply'] }, expect.any(AbortSignal));
   });
 
   it('AC remains keyboard-accessible while busy and ignores a late response', async () => {
@@ -112,7 +122,7 @@ describe('calculator integration and accessibility', () => {
     const { user } = setup(calculate);
     await user.keyboard(`2${key}3{Enter}`);
     await waitFor(() => expect(result()).toHaveTextContent(String(value)));
-    expect(calculate).toHaveBeenCalledExactlyOnceWith(operation, [2, 3], expect.any(AbortSignal));
+    expect(calculate).toHaveBeenCalledExactlyOnceWith({ operands: [2, 3], operators: [operation] }, expect.any(AbortSignal));
   });
 
   it('supports comma decimals, backspace and both clear shortcuts', async () => {

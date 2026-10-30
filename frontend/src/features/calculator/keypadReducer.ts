@@ -1,135 +1,113 @@
-import type { Operation } from '../../api/calculator';
+import type { BinaryOp, Calculation } from '../../api/calculator';
 import { formatNumber } from './format';
 import { getOperation } from './operations';
+export type { BinaryOp } from '../../api/calculator';
 
-export type BinaryOp = Exclude<Operation, 'sqrt'>;
-
+interface Pending {
+  request: Calculation;
+  label: string;
+  target: 'expression' | 'operand' | 'selected';
+}
 export interface KeypadState {
   entry: string;
-  right?: number; // Unrounded unary result used as the current second operand.
-  left: number | null; // Raw backend result retained for continuation, or the selected first operand.
-  operator: BinaryOp | null;
+  value: number | null; // Raw backend result for the current operand.
+  operands: number[]; // Committed operands preceding the editable entry.
+  operators: BinaryOp[];
   expression: string;
   overwrite: boolean;
   error: string | null;
-  pending: { operation: Operation; operands: number[]; label: string; then: BinaryOp | null } | null;
+  pending: Pending | null;
 }
-
 export type Action =
   | { type: 'digit'; digit: string } | { type: 'decimal' } | { type: 'backspace' }
   | { type: 'toggleSign' } | { type: 'clear' } | { type: 'operator'; op: BinaryOp }
   | { type: 'sqrt' } | { type: 'equals' }
   | { type: 'resolved'; result: number } | { type: 'failed'; message: string };
-
 export const initialState: KeypadState = {
-  entry: '0', left: null, operator: null, expression: '', overwrite: false, error: null, pending: null,
+  entry: '0', value: null, operands: [], operators: [], expression: '', overwrite: false, error: null, pending: null,
 };
-
-function operatorLabel(left: number, operation: BinaryOp): string {
-  return operation === 'percentage' ? `${formatNumber(left)}% of` : `${formatNumber(left)} ${getOperation(operation).symbol}`;
+function operandLabel(n: number): string {
+  const value = formatNumber(n);
+  return n < 0 ? `(${value})` : value;
+}
+function prefix(operands: number[], operators: BinaryOp[]): string {
+  return operands.map((value, index) => `${operandLabel(value)} ${operators[index] === 'percentage' ? '% of' : getOperation(operators[index]).symbol}`).join(' ');
+}
+function currentValue(state: KeypadState): number { return state.value ?? Number(state.entry); }
+function edit(state: KeypadState, entry: string): KeypadState {
+  return { ...state, entry, value: null, overwrite: false, error: null,
+    expression: state.operators.length ? `${prefix(state.operands, state.operators)} ${entry.startsWith('-') ? `(${entry})` : entry}` : '' };
 }
 
-function currentValue(state: KeypadState): number {
-  return state.right ?? (state.overwrite && state.left !== null ? state.left : Number(state.entry));
-}
-
-function inputExpression(state: KeypadState): string {
-  if (state.right !== undefined && state.operator && state.left !== null) return operatorLabel(state.left, state.operator);
-  return state.overwrite && !state.operator ? '' : state.expression;
-}
-
-function binaryRequest(state: KeypadState, then: BinaryOp | null): KeypadState {
-  if (state.left === null || state.operator === null || state.overwrite) return state;
-  const right = state.right ?? Number(state.entry);
-  const label = `${operatorLabel(state.left, state.operator)} ${formatNumber(right)}`;
-  return { ...state, error: null, expression: label, pending: { operation: state.operator, operands: [state.left, right], label, then } };
-}
-
-// Pure input transitions only. Every arithmetic operation is a pending API request.
+// This reducer records input and backend requests; it never evaluates an expression.
 export function keypadReducer(state: KeypadState, action: Action): KeypadState {
-  if (state.pending && action.type !== 'clear' && action.type !== 'resolved' && action.type !== 'failed') return state;
-
+  if (state.pending && !['clear', 'resolved', 'failed'].includes(action.type)) return state;
   switch (action.type) {
-    case 'clear':
-      return initialState;
+    case 'clear': return initialState;
     case 'digit': {
       if (!/^\d$/.test(action.digit)) return state;
-      const entry = state.overwrite || state.right !== undefined ? '0' : state.entry;
+      const entry = state.overwrite || state.value !== null ? '0' : state.entry;
       if (entry.replace(/\D/g, '').length >= 15) return state;
-      return {
-        ...state,
-        entry: entry === '0' ? action.digit : entry + action.digit,
-        right: undefined,
-        left: state.overwrite && !state.operator ? null : state.left,
-        expression: inputExpression(state),
-        overwrite: false,
-        error: null,
-      };
+      return edit(state, entry === '0' ? action.digit : entry + action.digit);
     }
     case 'decimal': {
-      const entry = state.overwrite || state.right !== undefined ? '0' : state.entry;
-      if (entry.includes('.')) return state;
-      return { ...state, right: undefined, entry: entry + '.', left: state.overwrite && !state.operator ? null : state.left, expression: inputExpression(state), overwrite: false, error: null };
+      const entry = state.overwrite || state.value !== null ? '0' : state.entry;
+      return entry.includes('.') ? state : edit(state, entry + '.');
     }
     case 'backspace': {
-      if (state.overwrite || state.right !== undefined) return state;
+      if (state.overwrite || state.value !== null) return state;
       const entry = state.entry.slice(0, -1);
-      return { ...state, entry: entry === '' || entry === '-' || entry === '-0' ? '0' : entry };
+      return edit(state, ['', '-', '-0'].includes(entry) ? '0' : entry);
     }
-    case 'toggleSign':
-      if (state.right !== undefined) {
-        const right = state.right === 0 ? 0 : -state.right;
-        return { ...state, right, entry: formatNumber(right), error: null,
-          expression: state.operator && state.left !== null ? `${operatorLabel(state.left, state.operator)} ${formatNumber(right)}` : state.expression };
+    case 'toggleSign': {
+      if (state.overwrite && state.operators.length) {
+        const value = -currentValue(state);
+        const operands = [...state.operands.slice(0, -1), value];
+        return { ...state, operands, entry: formatNumber(value), value, expression: prefix(operands, state.operators), error: null };
       }
-      if (state.overwrite && state.left !== null) {
-        // Sign toggling edits an operand; preserve its raw precision and result protection.
-        const left = state.left === 0 ? 0 : -state.left;
-        return { ...state, left, entry: formatNumber(left), expression: state.operator ? operatorLabel(left, state.operator) : '', error: null };
+      if (state.value !== null) {
+        const value = -state.value;
+        return { ...state, entry: formatNumber(value), value, error: null,
+          expression: state.operators.length ? `${prefix(state.operands, state.operators)} ${operandLabel(value)}` : '' };
       }
-      return {
-        ...state,
-        entry: state.entry === '0' ? '0' : state.entry.startsWith('-') ? state.entry.slice(1) : '-' + state.entry,
-        expression: inputExpression(state),
-        overwrite: state.overwrite,
-        error: null,
-      };
+      return edit(state, state.entry === '0' ? '0' : state.entry.startsWith('-') ? state.entry.slice(1) : '-' + state.entry);
+    }
     case 'operator': {
-      if (state.operator && !state.overwrite) return binaryRequest(state, action.op);
-      const left = currentValue(state);
-      return { ...state, left, operator: action.op, expression: operatorLabel(left, action.op), overwrite: true, error: null };
+      const replacing = state.overwrite && state.operators.length > 0;
+      const operands = replacing ? state.operands : [...state.operands, currentValue(state)];
+      const operators = replacing ? [...state.operators.slice(0, -1), action.op] : [...state.operators, action.op];
+      return { ...state, operands, operators, expression: prefix(operands, operators), overwrite: true, error: null };
+    }
+    case 'equals': {
+      if (!state.operators.length || state.overwrite) return state;
+      const value = currentValue(state);
+      const label = `${prefix(state.operands, state.operators)} ${operandLabel(value)}`;
+      return { ...state, expression: label, pending: {
+        request: { operands: [...state.operands, value], operators: state.operators }, label, target: 'expression',
+      } };
     }
     case 'sqrt': {
-      const operand = currentValue(state);
-      const label = `√${formatNumber(operand)}`;
-      return { ...state, expression: state.operator && state.left !== null && !state.overwrite
-        ? `${operatorLabel(state.left, state.operator)} ${label}` : label, error: null, pending: { operation: 'sqrt', operands: [operand], label, then: null } };
+      const value = currentValue(state);
+      const selected = state.overwrite && state.operators.length > 0;
+      const label = `√${operandLabel(value)}`;
+      return { ...state, error: null, expression: state.operators.length && !selected ? `${prefix(state.operands, state.operators)} ${label}` : label,
+        pending: { request: { operation: 'sqrt', operands: [value] }, label, target: selected ? 'selected' : 'operand' } };
     }
-    case 'equals':
-      return binaryRequest(state, null);
     case 'resolved': {
       if (!state.pending) return state;
-      if (state.pending.operation === 'sqrt' && state.operator && state.left !== null) {
-        if (state.overwrite) {
-          return { ...state, entry: formatNumber(action.result), left: action.result, right: undefined,
-            expression: operatorLabel(action.result, state.operator), pending: null, error: null };
-        }
-        return { ...state, entry: formatNumber(action.result), right: action.result,
-          expression: `${operatorLabel(state.left, state.operator)} ${state.pending.label} =`, pending: null, error: null };
+      const value = action.result;
+      const entry = formatNumber(value);
+      if (state.pending.target === 'expression') {
+        return { ...initialState, entry, value, overwrite: true, expression: `${state.pending.label} =` };
       }
-      const next = state.pending.then;
-      return {
-        entry: formatNumber(action.result),
-        left: action.result,
-        operator: next,
-        expression: next ? operatorLabel(action.result, next) : `${state.pending.label} =`,
-        overwrite: true,
-        error: null,
-        pending: null,
-      };
+      if (state.pending.target === 'selected') {
+        const operands = [...state.operands.slice(0, -1), value];
+        return { ...state, operands, entry, value, pending: null, expression: prefix(operands, state.operators) };
+      }
+      return { ...state, entry, value, overwrite: false, pending: null,
+        expression: `${state.operators.length ? prefix(state.operands, state.operators) + ' ' : ''}${state.pending.label} =` };
     }
     case 'failed':
-      if (!state.pending) return state;
-      return { ...state, right: undefined, left: null, operator: null, expression: state.pending.label, overwrite: true, error: action.message, pending: null };
+      return state.pending ? { ...initialState, entry: state.entry, expression: state.expression, overwrite: true, error: action.message } : state;
   }
 }

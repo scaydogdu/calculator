@@ -19,21 +19,41 @@ test('serves the frontend under the security policy without browser errors', asy
   expect(errors).toEqual([]);
 });
 
-test('calculates and chains through the real API', async ({ page }) => {
+test('submits the full expression on Equals and evaluates precedence in Go', async ({ page }) => {
+  const requests: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/v1/evaluate')) requests.push(request.postDataJSON());
+  });
   const button = (name: string) => page.getByRole('button', { name, exact: true });
-  await button('2').click();
-  await button('Add').click();
-  await button('3').click();
-  const addition = page.waitForResponse((response) => response.url().endsWith('/api/v1/calculate') && response.request().method() === 'POST');
-  await button('Multiply').click();
-  const response = await addition;
-  expect(response.status()).toBe(200);
-  expect(await response.json()).toMatchObject({ operation: 'add', operands: [2, 3], result: 5 });
-  await expect(page.getByLabel('Expression')).toHaveText('5 ×');
-  await button('4').click();
+  for (const name of ['2', 'Add', '3', 'Multiply', '4']) await button(name).click();
+  await expect(page.getByLabel('Expression')).toHaveText('2 + 3 × 4');
+  expect(requests).toEqual([]);
+  const evaluation = page.waitForResponse((response) => response.url().endsWith('/api/v1/evaluate'));
   await button('Equals').click();
-  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('20');
-  await expect(page.getByLabel('Expression')).toHaveText('5 × 4 =');
+  const response = await evaluation;
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual({ result: 14 });
+  expect(requests).toEqual([{ operands: [2, 3, 4], operators: ['add', 'multiply'] }]);
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('14');
+  await expect(page.getByLabel('Expression')).toHaveText('2 + 3 × 4 =');
+});
+
+for (const [expression, result] of [
+  ['8/2+3=', '7'], ['2*3^2=', '18'], ['2^3^2=', '512'],
+  ['100/10/2=', '5'], ['10-3-2=', '5'], ['2+3*4^2-8/2=', '46'],
+  ['2+*3=', '6'], ['1+15%200=', '31'],
+]) {
+  test(`evaluates ${expression} as ${result}`, async ({ page }) => {
+    await page.keyboard.type(expression);
+    await expect(page.getByRole('status', { name: 'Result' })).toHaveText(result);
+  });
+}
+
+test('keeps square roots as operands in an expression', async ({ page }) => {
+  await page.keyboard.type('9+16r');
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('4');
+  await page.keyboard.type('*2=');
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('17');
 });
 
 test('shows a domain error and recovers on the next calculation', async ({ page }) => {
@@ -61,7 +81,7 @@ test('keeps keyboard focus through a request and clears with Enter', async ({ pa
 test('sends every submitted calculation to the backend', async ({ page }) => {
   const requests: unknown[] = [];
   page.on('request', (request) => {
-    if (request.url().endsWith('/api/v1/calculate') && request.method() === 'POST') requests.push(request.postDataJSON());
+    if (request.url().endsWith('/api/v1/evaluate') && request.method() === 'POST') requests.push(request.postDataJSON());
   });
   for (const expression of ['2+3=', '2+3=', '3+2=']) {
     await page.getByRole('button', { name: 'All clear' }).click();
@@ -69,16 +89,16 @@ test('sends every submitted calculation to the backend', async ({ page }) => {
     await expect(page.getByRole('status', { name: 'Result' })).toHaveText('5');
   }
   expect(requests).toEqual([
-    { operation: 'add', operands: [2, 3] },
-    { operation: 'add', operands: [2, 3] },
-    { operation: 'add', operands: [3, 2] },
+    { operands: [2, 3], operators: ['add'] },
+    { operands: [2, 3], operators: ['add'] },
+    { operands: [3, 2], operators: ['add'] },
   ]);
 });
 
 test('AC cancels a request and ignores a late reply', async ({ page }) => {
   let delayedRoute: Route | undefined;
   let requests = 0;
-  await page.route('**/api/v1/calculate', async (route) => {
+  await page.route('**/api/v1/evaluate', async (route) => {
     requests += 1;
     if (requests === 1) {
       delayedRoute = route;
@@ -89,7 +109,7 @@ test('AC cancels a request and ignores a late reply', async ({ page }) => {
   await page.keyboard.type('2+3=');
   await expect.poll(() => delayedRoute !== undefined).toBe(true);
   const cancelled = page.waitForEvent('requestfailed', {
-    predicate: (request) => request.url().endsWith('/api/v1/calculate'),
+    predicate: (request) => request.url().endsWith('/api/v1/evaluate'),
   });
   await page.getByRole('button', { name: 'All clear' }).click();
   await cancelled;

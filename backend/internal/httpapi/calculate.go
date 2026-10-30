@@ -18,13 +18,22 @@ type calculateRequest struct {
 	Operands  []*float64           `json:"operands"`
 }
 
+type expressionRequest struct {
+	Operands  []*float64             `json:"operands"`
+	Operators []calculator.Operation `json:"operators"`
+}
+
 type calculateResponse struct {
 	Operation calculator.Operation `json:"operation"`
 	Operands  []float64            `json:"operands"`
 	Result    float64              `json:"result"`
 }
 
-func handleCalculate() http.Handler {
+func handleCalculate() http.Handler { return handleCalculation(false) }
+
+func handleEvaluate() http.Handler { return handleCalculation(true) }
+
+func handleCalculation(expression bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Reject known oversize bodies before decoding. MaxBytesReader also
 		// enforces the limit when the client does not provide a length.
@@ -33,11 +42,16 @@ func handleCalculate() http.Handler {
 			return
 		}
 		var req *calculateRequest
+		var expr *expressionRequest
+		var target any = &req
+		if expression {
+			target = &expr
+		}
 		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 		dec.DisallowUnknownFields()
-		if err := dec.Decode(&req); err != nil || req == nil {
+		if err := dec.Decode(target); err != nil || (expression && expr == nil) || (!expression && req == nil) {
 			writeDecodeError(w, err,
-				"Request body must be a JSON object with operation and operands.")
+				"Request body must be a valid calculation JSON object.")
 			return
 		}
 
@@ -45,27 +59,47 @@ func handleCalculate() http.Handler {
 			writeDecodeError(w, err, "Request body must contain exactly one JSON object.")
 			return
 		}
-		operands := make([]float64, len(req.Operands))
-		for i, operand := range req.Operands {
+		numbers := []*float64(nil)
+		if expression {
+			numbers = expr.Operands
+		} else {
+			numbers = req.Operands
+		}
+		operands := make([]float64, len(numbers))
+		for i, operand := range numbers {
 			if operand == nil {
 				writeError(w, http.StatusBadRequest, "invalid_json", "Operands must be JSON numbers.")
 				return
 			}
 			operands[i] = *operand
 		}
-		result, err := calculator.Calculate(req.Operation, operands)
+		var result float64
+		var err error
+		if expression && expr.Operators == nil {
+			err = calculator.ErrInvalidExpression
+		} else if expression {
+			result, err = calculator.Evaluate(operands, expr.Operators)
+		} else {
+			result, err = calculator.Calculate(req.Operation, operands)
+		}
 		if err != nil {
 			status, code, message := classify(err)
 			writeError(w, status, code, message)
 			return
 		}
-		writeJSON(w, http.StatusOK, calculateResponse{Operation: req.Operation, Operands: operands, Result: result})
+		if expression {
+			writeJSON(w, http.StatusOK, map[string]float64{"result": result})
+		} else {
+			writeJSON(w, http.StatusOK, calculateResponse{Operation: req.Operation, Operands: operands, Result: result})
+		}
 	})
 }
 
 // classify maps domain errors to an HTTP status and a stable machine-readable code.
 func classify(err error) (int, string, string) {
 	switch {
+	case errors.Is(err, calculator.ErrInvalidExpression):
+		return http.StatusBadRequest, "invalid_expression", "Expression requires 1 to 128 finite operands and one binary operator between each pair."
 	case errors.Is(err, calculator.ErrUnknownOperation):
 		return http.StatusBadRequest, "unknown_operation", "Unknown operation. Expected add, subtract, multiply, divide, power, sqrt or percentage."
 	case errors.Is(err, calculator.ErrOperandCount):

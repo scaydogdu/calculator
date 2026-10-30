@@ -42,19 +42,19 @@ Without Docker, run `npm run build` from `frontend`, then `STATIC_DIR=../fronten
 
 ## API
 
-[docs/openapi.yaml](docs/openapi.yaml) defines requests, responses and examples for `POST /api/v1/calculate` and `GET /healthz`. For example, using its `add` example:
+[docs/openapi.yaml](docs/openapi.yaml) defines requests, responses and examples for `POST /api/v1/evaluate`, `POST /api/v1/calculate` and `GET /healthz`. Evaluate a chained expression:
 
 ```bash
-curl http://localhost:8080/api/v1/calculate \
+curl http://localhost:8080/api/v1/evaluate \
   -H 'Content-Type: application/json' \
-  -d '{"operation":"add","operands":[2,3]}'
+  -d '{"operands":[2,3,4],"operators":["add","multiply"]}'
 ```
 
 ```json
-{"operation":"add","operands":[2,3],"result":5}
+{"result":14}
 ```
 
-Supported operations: `add`, `subtract`, `multiply`, `divide`, `power`, `sqrt`, and `percentage`. Square root takes one operand; the others take two. Percentage means **a% of b**, `(a / 100) * b`.
+`/calculate` evaluates one operation, for example `{"operation":"sqrt","operands":[144]}` returns `{"operation":"sqrt","operands":[144],"result":12}`. Supported operations: `add`, `subtract`, `multiply`, `divide`, `power`, `sqrt`, and `percentage`. Square root takes one operand; the others take two. Percentage means **a% of b**, `(a / 100) * b`.
 
 Errors use `{"error":{"code":"...","message":"..."}}`: 400 for invalid requests, 404 for unknown API routes, 405 for unsupported calculation methods, **413 `request_too_large` for bodies over 1 MiB**, 422 for `division_by_zero`, `negative_sqrt`, `non_real_result` or `result_overflow`, and 500 for unexpected failures. Unknown fields, null operands, numeric strings and trailing JSON are rejected.
 
@@ -81,7 +81,7 @@ CI runs Go vet, Staticcheck, govulncheck, race tests, frontend lint/type checkin
 
 ## Design decisions
 
-- A pure reducer owns keypad input and left-to-right chaining: `2 + 3 × 4 =` gives `20`. Unrounded backend results are retained for subsequent operations; fractional or large results use 12 significant digits. Rounded whole-number digits are shown in scientific notation, for example `-1.76366841446e+13`; exact integers below 1e15 retain all their digits.
+- A pure reducer records the expression until Equals; Go evaluates powers first (right associative), then multiplication/division/percent-of, then addition/subtraction (left associative): `2 + 3 × 4 = 14`, `2 ^ 3 ^ 2 = 512`. Expressions allow up to 128 operands. Square root applies immediately to the current operand. Signed operands are shown in parentheses: `(-2) ^ 2 = 4`. Unrounded backend results are retained for subsequent operations; fractional or large results use 12 significant digits. Rounded whole-number digits are shown in scientific notation, for example `-1.76366841446e+13`; exact integers below 1e15 retain all their digits.
 - Input events call one controller hook directly. It applies pure keypad transitions and sends each submitted calculation to the backend using native `fetch`, without caching or automatic retries. One request controller enforces a 20-second deadline, aborts on AC/unmount and ignores late replies. Offline requests fail instead of being queued.
 - IEEE-754 float64 is used throughout. Non-real and non-finite results are rejected; this is not arbitrary-precision decimal arithmetic.
 - Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending. Long numbers shrink to fit narrow displays, keeping every typed digit visible without horizontal scrolling.

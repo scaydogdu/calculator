@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Calculator API
-  version: 1.1.0
+  version: 1.2.0
   description: |
     Stateless arithmetic using IEEE-754 float64. Results must be finite.
     Request bodies are limited to 1 MiB (1,048,576 bytes), including whitespace.
@@ -137,6 +137,57 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: {code: internal_error, message: An internal error occurred.}
+  /api/v1/evaluate:
+    post:
+      operationId: evaluate
+      summary: Evaluate an arithmetic expression with standard precedence
+      description: |
+        Supply numbers in order, with one binary operator between each pair.
+        Power is evaluated first, right to left; multiply, divide and percentage
+        follow, left to right; add and subtract follow, left to right.
+        Signed operands are values: [-2, 2] with power means (-2)^2 = 4.
+        Percentage remains a percent of b. Square root uses /api/v1/calculate.
+        Expressions support 1 to 128 operands; an intermediate domain error or
+        overflow rejects the expression, even if a later operation could mask it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpressionRequest'
+            examples:
+              precedence:
+                value: {operands: [2, 3, 4], operators: [add, multiply]}
+              powers:
+                value: {operands: [2, 3, 2], operators: [power, power]}
+      responses:
+        '200':
+          description: Raw finite expression result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpressionResponse'
+              examples:
+                precedence:
+                  value: {result: 14}
+                powers:
+                  value: {result: 512}
+        '400':
+          description: Invalid JSON, unknown field or malformed expression
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: {code: invalid_expression, message: Expression requires 1 to 128 finite operands and one binary operator between each pair.}
+        '405':
+          $ref: '#/paths/~1api~1v1~1calculate/post/responses/405'
+        '413':
+          $ref: '#/paths/~1api~1v1~1calculate/post/responses/413'
+        '422':
+          $ref: '#/paths/~1api~1v1~1calculate/post/responses/422'
+        '500':
+          $ref: '#/paths/~1api~1v1~1calculate/post/responses/500'
 components:
   schemas:
     Operand:
@@ -145,6 +196,31 @@ components:
       minimum: -1.7976931348623157e+308
       maximum: 1.7976931348623157e+308
       description: Finite IEEE-754 float64 JSON number
+    ExpressionRequest:
+      type: object
+      additionalProperties: false
+      required: [operands, operators]
+      description: operators must contain exactly one fewer item than operands.
+      properties:
+        operands:
+          type: array
+          minItems: 1
+          maxItems: 128
+          items:
+            $ref: '#/components/schemas/Operand'
+        operators:
+          type: array
+          maxItems: 127
+          items:
+            type: string
+            enum: [add, subtract, multiply, divide, power, percentage]
+    ExpressionResponse:
+      type: object
+      additionalProperties: false
+      required: [result]
+      properties:
+        result:
+          $ref: '#/components/schemas/Operand'
     CalculateRequest:
       oneOf:
         - type: object
@@ -214,7 +290,7 @@ components:
           properties:
             code:
               type: string
-              enum: [invalid_json, unknown_field, unknown_operation, invalid_operands, method_not_allowed, request_too_large, division_by_zero, negative_sqrt, non_real_result, result_overflow, not_found, internal_error]
+              enum: [invalid_json, unknown_field, unknown_operation, invalid_operands, invalid_expression, method_not_allowed, request_too_large, division_by_zero, negative_sqrt, non_real_result, result_overflow, not_found, internal_error]
             message:
               type: string
               minLength: 1
