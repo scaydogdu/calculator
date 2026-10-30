@@ -9,7 +9,7 @@ export function Display({ expression, entry, error, busy }: DisplayProps) {
   return (
     <div className="display">
       <div className="expression" aria-label="Expression">{expression}</div>
-      <output className={`value${entry.length > 12 ? ' value-long' : ''}`} aria-label="Result" aria-live="polite">{entry}</output>
+      <output className="value" aria-label="Result" aria-live="polite">{entry}</output>
       <div className="display-message">
         {error && <p className="error" role="alert">{error}</p>}
         {busy && <p className="loading">Calculating…</p>}

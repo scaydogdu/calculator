@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type CalculateFn, type CalculateResponse, type Operation } from '../../api/calculator';
@@ -343,5 +343,49 @@ describe('mathematical domain error presentation', () => {
     await user.keyboard('^0.5=');
     expect(await screen.findByRole('alert')).toHaveTextContent('This calculation has no real-number result.');
     expect(screen.getByRole('alert')).not.toHaveTextContent('too large');
+  });
+});
+
+
+describe('request timeout recovery', () => {
+  it.each(['success', 'failure'] as const)('recovers from a timeout and ignores late %s', async (lateOutcome) => {
+    vi.useFakeTimers();
+    try {
+      let finish!: (value: CalculateResponse) => void;
+      let fail!: (reason: Error) => void;
+      const calculate = vi.fn()
+        .mockImplementationOnce(() => new Promise<CalculateResponse>((resolve, reject) => { finish = resolve; fail = reject; }))
+        .mockResolvedValueOnce(sum);
+      render(<Calculator calculate={calculate} />);
+      const enter = () => { for (const key of ['2', '+', '3', '=']) fireEvent.keyDown(document, { key }); };
+      enter();
+      await act(async () => { await vi.advanceTimersByTimeAsync(19_999); });
+      expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'true');
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(screen.getByRole('alert')).toHaveTextContent('The calculator service took too long. Try again.');
+      expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'false');
+      expect(calculate.mock.calls[0][2].aborted).toBe(true);
+      await act(async () => { enter(); });
+      expect(result()).toHaveTextContent(/^5$/);
+      await act(async () => {
+        if (lateOutcome === 'success') finish(response('add', [2, 3], 999));
+        else fail(new Error('late rejection'));
+      });
+      expect(result()).toHaveTextContent(/^5$/);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('does not show a timeout error after All clear cancels a stalled request', async () => {
+    vi.useFakeTimers();
+    try {
+      render(<Calculator calculate={() => new Promise(() => {})} />);
+      for (const key of ['2', '+', '3', '=']) fireEvent.keyDown(document, { key });
+      fireEvent.click(screen.getByRole('button', { name: 'All clear' }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+      expect(result()).toHaveTextContent(/^0$/);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
   });
 });

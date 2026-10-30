@@ -1,14 +1,14 @@
 # Coverage report
 
-Measured 2026-10-30 after the ten review fixes, using `make coverage` with Go 1.27.3, Node 22.23.2 and Vitest 5.0.5. All 113 frontend tests passed. Coverage includes live feature code; the obsolete form formatter and duplicate request-hook UI state and their obsolete tests have been removed.
+Measured 2026-10-30 after the review fixes, request timeout and consistent result typography, using `make coverage` with Go 1.27.3, Node 22.23.2 and Vitest 5.0.5. All 119 frontend tests passed. Coverage includes live feature code; the obsolete form formatter and duplicate request-hook UI state and their obsolete tests have been removed.
 
 ## Backend
 
 ```text
-ok  	github.com/aydogdu/calculator/backend/cmd/server	11.599s	coverage: 72.7% of statements
-ok  	github.com/aydogdu/calculator/backend/internal/calculator	0.555s	coverage: 100.0% of statements
-ok  	github.com/aydogdu/calculator/backend/internal/httpapi	1.432s	coverage: 93.8% of statements
-total:										(statements)		90.9%
+ok  github.com/aydogdu/calculator/backend/cmd/server                  (cached)  coverage: 72.7% of statements
+ok  github.com/aydogdu/calculator/backend/internal/calculator        (cached)  coverage: 100.0% of statements
+ok  github.com/aydogdu/calculator/backend/internal/httpapi           (cached)  coverage: 93.8% of statements
+total: (statements) 90.9%
 ```
 
 ```text
@@ -41,23 +41,27 @@ The domain is fully covered. Tests exercise the real run() server, including a s
 -------------------|---------|----------|---------|---------|-------------------
 File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 -------------------|---------|----------|---------|---------|-------------------
-All files          |   98.08 |    97.26 |   96.87 |   99.21 |
+All files          |   98.26 |    96.83 |   97.14 |   99.29 |
  src               |       0 |      100 |       0 |       0 |
   App.tsx          |       0 |      100 |       0 |       0 | 4
- ...res/calculator |   98.51 |    96.87 |     100 |     100 |
+ ...res/calculator |   98.67 |    96.39 |     100 |     100 |
   Calculator.tsx   |     100 |    96.96 |     100 |     100 | 18
   keypadReducer.ts |   98.18 |    96.52 |     100 |     100 | 56,81-83,87
   operations.ts    |   83.33 |       50 |     100 |     100 | 22
+  ...alculation.ts |     100 |     87.5 |     100 |     100 | 29
 -------------------|---------|----------|---------|---------|-------------------
 
 =============================== Coverage summary ===============================
-Statements   : 98.08% ( 154/157 )
-Branches     : 97.26% ( 213/219 )
-Functions    : 96.87% ( 31/32 )
-Lines        : 99.21% ( 127/128 )
+Statements   : 98.26% ( 170/173 )
+Branches     : 96.83% ( 214/221 )
+Functions    : 97.14% ( 34/35 )
+Lines        : 99.29% ( 140/141 )
 ================================================================================
 ```
 
-Feature lines are covered by reducer, component, request-lifetime and API-boundary behavior tests. The top-level App.tsx wrapper is not directly rendered. Remaining uncovered branches include defensive invalid-digit/operation handling and a legacy generic non-finite message fallback. DOM bootstrap, setup and test files are excluded from coverage. Generated HTML reports live at backend/coverage.html and frontend/coverage/index.html.
+Feature lines are covered by reducer, component, request-lifetime and API-boundary behavior tests. The top-level App.tsx wrapper is not directly rendered. Remaining uncovered branches include defensive invalid-digit/operation handling, a legacy generic non-finite message fallback and the abort-aware transport error suppression branch. DOM bootstrap, setup and test files are excluded from coverage. Generated HTML reports live at backend/coverage.html and frontend/coverage/index.html.
 
 The rebuilt review Docker image passed the unchanged independent API script (40/40). Additional live checks confirmed exact 7% and 29% of 100 responses, non-real error wording, descriptive body-limit rejection, blocked assets directory listing and normal root/JS delivery. Earlier visual browser QA evidence remains in docs/qa/qa-round-3.md; no new browser validation is claimed for these review fixes.
+
+
+Six new deadline regressions verify the 20-second boundary, timeout recovery, ignored late success/failure, AC cancellation, completed-request timer cleanup and unmount cleanup. The timeout recovery and abandoned-request settlement tests failed before the hook fix and passed afterward. Number typography now remains consistent as entry length changes; long values scroll within the display. These changes preserve the server API contract and all QA-owned files. The earlier screenshots document the previous typography; no new browser rerun is claimed.

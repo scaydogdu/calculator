@@ -42,3 +42,34 @@ describe('useCalculation request lifetime', () => {
     expect(calculate.mock.calls[0][2].aborted).toBe(true);
   });
 });
+
+
+describe('request deadline cleanup', () => {
+  it.each(['success', 'failure'] as const)('clears the deadline after %s', async (outcome) => {
+    vi.useFakeTimers();
+    try {
+      const calculate = outcome === 'success' ? vi.fn().mockResolvedValue(sum) : vi.fn().mockRejectedValue(new Error('offline'));
+      const { result } = renderHook(() => useCalculation(calculate));
+      await result.current.run('add', [2, 3]);
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(calculate.mock.calls[0][2].aborted).toBe(false);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('settles an abandoned request and clears its deadline on unmount', async () => {
+    vi.useFakeTimers();
+    try {
+      const calculate = vi.fn(() => new Promise<CalculateResponse>(() => {}));
+      const { result, unmount } = renderHook(() => useCalculation(calculate));
+      const pending = result.current.run('add', [2, 3]);
+      unmount();
+      let settled = false;
+      void pending.then(() => { settled = true; });
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(settled).toBe(true);
+      expect(await pending).toBeUndefined();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally { vi.useRealTimers(); }
+  });
+});

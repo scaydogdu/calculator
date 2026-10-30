@@ -8,7 +8,7 @@ A full-stack calculator with a Go REST service and a React + TypeScript interfac
 
 Addition, subtraction, multiplication, division, powers, square roots, and percentages. **Percentage means “a% of b”: `(a / 100) * b`.** The interface has a display and a four-column keypad with digits, decimal point, `AC`, backspace, sign toggle, operators and `=`. It supports desktop keyboard input, loading states, readable errors and light/dark system themes. Entries accept at most 15 digits and one decimal point, without leading zeros. Square root evaluates the displayed number; percentages mean “a% of b”.
 
-Operations chain from left to right through the service: `2 + 3 × 4 =` first requests addition, then multiplies the returned `5` by `4` to display `20`. Entering digits after a result or error starts a fresh calculation. Square root also works inside an unfinished binary expression: `9 + 16 √x =` evaluates the root first, then sends `add [9, 4]` to the service and displays `13`. Unrounded unary results remain available for continuation. While a request is pending, only `AC` is active; it aborts the request and ignores any late response.
+Operations chain from left to right through the service: `2 + 3 × 4 =` first requests addition, then multiplies the returned `5` by `4` to display `20`. Entering digits after a result or error starts a fresh calculation. Square root also works inside an unfinished binary expression: `9 + 16 √x =` evaluates the root first, then sends `add [9, 4]` to the service and displays `13`. Unrounded unary results remain available for continuation. While a request is pending, only `AC` is active; it aborts the request and ignores any late response. Requests that do not finish within 20 seconds are aborted with a retry message, freeing the keypad for another calculation.
 
 | Keyboard | Action |
 |---|---|
@@ -20,7 +20,7 @@ Operations chain from left to right through the service: `2 + 3 × 4 =` first re
 | `Escape` or `Delete` | All clear |
 | `r` | Square root |
 
-Focused buttons activate with Enter or Space. Pending keys use `aria-disabled` and remain focusable, so the focus stays in place while the reducer ignores blocked actions. Ctrl/Meta shortcuts are left to the browser. Keys have accessible names, the selected operator exposes `aria-pressed`, values use a live `<output>`, and errors use `role="alert"`. Keys are at least 56px tall. The card is at most 360px wide, with long values shrinking and staying on one line.
+Focused buttons activate with Enter or Space. Pending keys use `aria-disabled` and remain focusable, so the focus stays in place while the reducer ignores blocked actions. Ctrl/Meta shortcuts are left to the browser. Keys have accessible names, the selected operator exposes `aria-pressed`, values use a live `<output>`, and errors use `role="alert"`. Keys are at least 56px tall. The card is at most 360px wide, with a consistent result font size at each viewport width. Long values stay on one line and scroll horizontally within the display.
 
 Independent [QA round 2](docs/qa/qa-round-2.md) verified all K1–K26 in the browser, mobile layout at 375px, light/dark contrast and console behavior for commit `19f31fd`. Its two keyboard accessibility majors are covered by regression tests and fixed in this revision. [QA round 3](docs/qa/qa-round-3.md) verified the Enter/focus fixes and regression scenarios in the rebuilt container, with no remaining findings.
 
