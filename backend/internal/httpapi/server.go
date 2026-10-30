@@ -20,12 +20,33 @@ func NewServer(logger *slog.Logger, staticDir string) http.Handler {
 
 type statusRecorder struct {
 	http.ResponseWriter
-	status int
+	status      int
+	wroteHeader bool
 }
 
 func (r *statusRecorder) WriteHeader(code int) {
-	r.status = code
+	if r.wroteHeader {
+		return
+	}
+	// Informational responses do not commit the final response status.
+	if code >= 100 && code < 200 && code != http.StatusSwitchingProtocols {
+		r.ResponseWriter.WriteHeader(code)
+		return
+	}
 	r.ResponseWriter.WriteHeader(code)
+	r.status = code
+	r.wroteHeader = true
+}
+
+func (r *statusRecorder) Write(body []byte) (int, error) {
+	if !r.wroteHeader {
+		r.WriteHeader(http.StatusOK)
+	}
+	return r.ResponseWriter.Write(body)
+}
+
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
 }
 
 func withLogging(logger *slog.Logger, next http.Handler) http.Handler {

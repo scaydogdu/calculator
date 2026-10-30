@@ -29,7 +29,7 @@ Independent [QA round 2](docs/qa/qa-round-2.md) verified all K1–K26 in the bro
 ## Prerequisites
 
 - Go 1.27+ (verified with 1.27.3); backend uses only the standard library.
-- Node.js 22.12+ in the 22 series, or a supported newer LTS release, and npm (verified with Node 22.23.2).
+- Node.js 22.23.2 and npm. `.nvmrc`, CI and the Docker build use the same Node version; `frontend/package.json` limits supported runtimes to the 22 series from that version onward. Run `nvm use` from the repository root if you use nvm.
 - Docker, optional, for the single-container build.
 
 ## Run with Docker
@@ -57,6 +57,27 @@ cd frontend && npm install && npm run dev
 ```
 
 Open http://localhost:5173. Vite proxies `/api` to Go on port 8080. For reproducible installs after cloning, use `npm ci` instead of `npm install`.
+
+The frontend uses TanStack Query v5 with an application-level `QueryClientProvider` and `useMutation` for calculation requests. Each calculation runs once without automatic retries or offline queuing. The keypad reducer controls input and chaining; the mutation hook preserves the 20-second deadline, aborts on AC or unmount, and ignores superseded responses. Clearing also resets the mutation state. The API transport uses native `fetch` with an `AbortSignal`.
+
+`src/api/calculateWithDeadline.ts` owns deadline and abort handling. Explicit cancellation preserves `AbortError`; only the deadline produces `request_timeout`, including when the underlying transport ignores abort or rejects with a generic abort error.
+
+## Browser regression tests
+
+From `frontend`, install Chromium once and run the suite:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+The command builds the frontend and starts Go serving that build on port 18080. Keep that port free. Tests cover real API calculations and chaining, domain-error recovery, and keyboard focus on desktop and mobile Chromium. To test an already-running production container instead:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:18080 npm run test:e2e
+```
+
+CI builds and starts the production image, waits for `/healthz`, runs `qa/api_contract_test.sh`, and runs the browser suite against the container. Failed browser runs retain screenshots and traces under `frontend/test-results/`; CI uploads those files and prints container logs before cleanup.
 
 ## Configuration
 

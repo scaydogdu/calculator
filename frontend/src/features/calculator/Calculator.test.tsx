@@ -1,5 +1,7 @@
 import { StrictMode } from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { createQueryWrapper } from '../../test/query';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type CalculateFn, type CalculateResponse, type Operation } from '../../api/calculator';
@@ -9,6 +11,7 @@ const response = (operation: Operation, operands: number[], result: number): Cal
 const sum = response('add', [2, 3], 5);
 const result = () => screen.getByRole('status', { name: 'Result' });
 const expression = () => screen.getByLabelText('Expression');
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: createQueryWrapper() });
 function setup(calculate: CalculateFn = vi.fn().mockResolvedValue(sum)) {
   const user = userEvent.setup();
   const view = render(<Calculator calculate={calculate} />);

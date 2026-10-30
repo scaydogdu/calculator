@@ -1,42 +1,51 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { ApiError, type CalculateFn, type Operation } from '../../api/calculator';
+import { calculateWithDeadline } from '../../api/calculateWithDeadline';
 
-const REQUEST_TIMEOUT_MS = 20_000;
-
-// The reducer owns UI state; this hook only owns each request's lifetime.
+// The reducer owns keypad state; Query owns request results and errors.
 export function useCalculation(calculate: CalculateFn) {
   const controllerRef = useRef<AbortController | null>(null);
-  useEffect(() => () => controllerRef.current?.abort(), []);
+  useEffect(() => () => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+  }, []);
+
+  const { mutateAsync, reset: resetMutation } = useMutation({
+    mutationKey: ['calculator', 'calculate'],
+    retry: false,
+    // Attempt immediately even when the browser reports offline, so the
+    // network error/deadline can release the keypad instead of pausing it.
+    networkMode: 'always',
+    gcTime: 0,
+    mutationFn: ({ operation, operands, controller }: {
+      operation: Operation;
+      operands: number[];
+      controller: AbortController;
+    }) => calculateWithDeadline(calculate, operation, operands, controller),
+  });
 
   const run = useCallback(async (operation: Operation, operands: number[]) => {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
-    let timedOut = false;
-    const timeoutError = new ApiError('request_timeout', 'The calculator service took too long. Try again.', 0);
-    let onAbort!: () => void;
-    const interrupted = new Promise<never>((_, reject) => {
-      onAbort = () => reject(timeoutError);
-      controller.signal.addEventListener('abort', onAbort, { once: true });
-    });
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, REQUEST_TIMEOUT_MS);
     try {
-      // Racing also releases this request if a transport ignores its abort signal.
-      const result = await Promise.race([calculate(operation, operands, controller.signal), interrupted]);
+      const result = await mutateAsync({ operation, operands, controller });
       if (!controller.signal.aborted) return { status: 'success' as const, result };
     } catch (error) {
-      if (timedOut) return { status: 'error' as const, error: timeoutError };
-      if (!controller.signal.aborted) return { status: 'error' as const, error };
+      if (controllerRef.current === controller &&
+        (!controller.signal.aborted || (error instanceof ApiError && error.code === 'request_timeout'))) {
+        return { status: 'error' as const, error };
+      }
     } finally {
-      clearTimeout(timer);
-      controller.signal.removeEventListener('abort', onAbort);
       if (controllerRef.current === controller) controllerRef.current = null;
     }
-  }, [calculate]);
+  }, [mutateAsync]);
 
-  const reset = useCallback(() => controllerRef.current?.abort(), []);
+  const reset = useCallback(() => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    resetMutation();
+  }, [resetMutation]);
   return { run, reset };
 }
