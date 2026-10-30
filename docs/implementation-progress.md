@@ -8,3 +8,5 @@ Pre-flight: Domain -> HTTP error classification and arity match; HTTP -> client 
 Ruling: Replace Decoder.More with a second Decode requiring io.EOF and reject null numeric values; More is not a trailing-document validator and Go silently converts null to zero. Cost if wrong: stricter malformed-input rejection.
 Ruling: Original assignment prompt is not available in the supplied files; prompts documentation will label that gap instead of inventing text. Cost if wrong: original prompt must be added later.
 Docker daemon is currently stopped. No GitHub publication is authorized; Task 12 remains pending.
+
+Task 1: complete. Domain tests observed failing on missing Operation, then passing with 100% coverage.
