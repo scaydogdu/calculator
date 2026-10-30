@@ -103,7 +103,7 @@ func classify(err error) (int, string, string) {
 	case errors.Is(err, calculator.ErrUnknownOperation):
 		return http.StatusBadRequest, "unknown_operation", "Unknown operation. Expected add, subtract, multiply, divide, power, sqrt or percentage."
 	case errors.Is(err, calculator.ErrOperandCount):
-		return http.StatusBadRequest, "invalid_operands", "Incorrect number of operands for the operation."
+		return http.StatusBadRequest, "invalid_operands", err.Error()
 	case errors.Is(err, calculator.ErrDivisionByZero):
 		return http.StatusUnprocessableEntity, "division_by_zero", "Division by zero is undefined."
 	case errors.Is(err, calculator.ErrNegativeSqrt):
@@ -111,7 +111,7 @@ func classify(err error) (int, string, string) {
 	case errors.Is(err, calculator.ErrNonReal):
 		return http.StatusUnprocessableEntity, "non_real_result", "The result is not a real number."
 	case errors.Is(err, calculator.ErrOverflow):
-		return http.StatusUnprocessableEntity, "result_overflow", "The result exceeds the float64 range."
+		return http.StatusUnprocessableEntity, "result_overflow", "The result is too large to represent."
 	default:
 		return http.StatusInternalServerError, "internal_error", "An internal error occurred."
 	}
@@ -123,6 +123,8 @@ func writeDecodeError(w http.ResponseWriter, err error, fallback string) {
 		writeError(w, http.StatusRequestEntityTooLarge, "request_too_large", bodyLimitMessage)
 		return
 	}
+	// encoding/json v1 has no exported unknown-field error type. Keep the
+	// message-prefix check confined to this HTTP decoding boundary.
 	const prefix = "json: unknown field "
 	if err != nil && strings.HasPrefix(err.Error(), prefix) {
 		field := strings.TrimPrefix(err.Error(), prefix)

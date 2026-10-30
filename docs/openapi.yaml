@@ -87,7 +87,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: {code: invalid_operands, message: 'Incorrect number of operands for the operation.'}
+                error: {code: invalid_operands, message: 'wrong number of operands: sqrt takes 1, got 2'}
         '405':
           description: Only POST is allowed
           headers:
@@ -128,7 +128,7 @@ paths:
                     error: {code: non_real_result, message: The result is not a real number.}
                 overflow:
                   value:
-                    error: {code: result_overflow, message: The result exceeds the float64 range.}
+                    error: {code: result_overflow, message: The result is too large to represent.}
         '500':
           description: Unexpected server failure
           content:

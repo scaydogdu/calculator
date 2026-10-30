@@ -100,8 +100,10 @@ func TestSpecificErrorCodesAndMessages(t *testing.T) {
 		body, code, message string
 		status              int
 	}{
+		{`{"operation":"sqrt","operands":[4,9]}`, "invalid_operands", "wrong number of operands: sqrt takes 1, got 2", 400},
+		{`{"operation":"add","operands":[4]}`, "invalid_operands", "wrong number of operands: add takes 2, got 1", 400},
 		{`{"operation":"power","operands":[-8,0.5]}`, "non_real_result", "The result is not a real number.", 422},
-		{`{"operation":"multiply","operands":[1e308,10]}`, "result_overflow", "The result exceeds the float64 range.", 422},
+		{`{"operation":"multiply","operands":[1e308,10]}`, "result_overflow", "The result is too large to represent.", 422},
 		{`{"operation":"power","operands":[0,-1]}`, "division_by_zero", "Division by zero is undefined.", 422},
 		{`{"extra":1}`, "unknown_field", `Unknown field "extra".`, 400},
 	} {
@@ -110,7 +112,7 @@ func TestSpecificErrorCodesAndMessages(t *testing.T) {
 		var body errorResponse
 		decode(t, rec, &body)
 		if rec.Code != test.status || body.Error.Code != test.code || body.Error.Message != test.message {
-			t.Fatalf("got %d %+v, want %d %s: %s", rec.Code, body, test.status, test.code, test.message)
+			t.Errorf("got %d %+v, want %d %s: %s", rec.Code, body, test.status, test.code, test.message)
 		}
 	}
 }

@@ -66,7 +66,7 @@ make coverage
 bash qa/api_contract_test.sh http://localhost:8080
 ```
 
-The API contract script requires curl and jq. Coverage reports are written to `backend/coverage.html` and `frontend/coverage/index.html`. Frontend coverage must reach 95% lines, statements and functions, and 90% branches.
+The API contract script requires curl and jq. The committed [coverage summary](docs/coverage.md) records measured results and reproduction commands. Generated reports are written to `backend/coverage.html` and `frontend/coverage/index.html`. Frontend coverage must reach 95% lines, statements and functions, and 90% branches.
 
 From `frontend`, run desktop/mobile Chromium regressions:
 
@@ -82,10 +82,11 @@ CI runs Go vet, Staticcheck, govulncheck, race tests, frontend lint/type checkin
 ## Design decisions
 
 - A pure reducer records the expression until Equals; Go evaluates powers first (right associative), then multiplication/division/percent-of, then addition/subtraction (left associative): `2 + 3 × 4 = 14`, `2 ^ 3 ^ 2 = 512`. Expressions allow up to 128 operands. Square root applies immediately to the current operand. Signed operands are shown in parentheses: `(-2) ^ 2 = 4`. Unrounded backend results are retained for subsequent operations; fractional or large results use 12 significant digits. Rounded whole-number digits are shown in scientific notation, for example `-1.76366841446e+13`; exact integers below 1e15 retain all their digits.
+- A synchronous ref holds the latest pure-reducer snapshot so rapid input events cannot read stale state; React state renders that same component-local snapshot.
 - Input events call one controller hook directly. It applies pure keypad transitions and sends each submitted calculation to the backend using native `fetch`, without caching or automatic retries. One request controller enforces a 20-second deadline, aborts on AC/unmount and ignores late replies. Offline requests fail instead of being queued.
 - IEEE-754 float64 is used throughout. Non-real and non-finite results are rejected; this is not arbitrary-precision decimal arithmetic.
 - Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending. Long numbers shrink to fit narrow displays, keeping every typed digit visible without horizontal scrolling.
 - Go uses the standard library for routing, JSON and logging. The minimum version and container build use the patched Go 1.27.3 release. It bounds request bodies and read/write/idle time, shuts down gracefully, and disables directory listings.
 - Production responses include `nosniff`, a same-origin Content Security Policy and `strict-origin-when-cross-origin` referrer policy. Development uses Vite's separate server.
 
-AI usage and links to the historical development records are in [docs/prompts.md](docs/prompts.md).
+AI attribution and selected prompt excerpts are in [docs/prompts.md](docs/prompts.md).
