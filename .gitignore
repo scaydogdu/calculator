@@ -1,0 +1,16 @@
+# Go
+backend/coverage.out
+backend/coverage.html
+backend/server
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+.superpowers/
+.env
+*.log
