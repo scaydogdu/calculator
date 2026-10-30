@@ -33,5 +33,10 @@ export function useCalculation(calculate: CalculateFn) {
     [calculate],
   );
 
-  return { state, run };
+  const reset = useCallback(() => {
+    controllerRef.current?.abort();
+    setState({ status: 'idle' });
+  }, []);
+
+  return { state, run, reset };
 }
