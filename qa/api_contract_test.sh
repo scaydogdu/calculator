@@ -78,11 +78,14 @@ ok "whitespace around body" '  {"operation":"add","operands":[1,1]}  ' '.result 
 
 echo "## Expression precedence"
 EVAL="$BASE/api/v1/evaluate"
-check "multiply before add" POST "$EVAL" '{"operands":[2,3,4],"operators":["add","multiply"]}' 200 '.result == 14'
+check "multiply before add" POST "$EVAL" '{"operands":[2,3,4],"operators":["add","multiply"]}' 200 '.result == 14 and .operands == [2,3,4] and .operators == ["add","multiply"]'
 check "powers before multiply" POST "$EVAL" '{"operands":[2,3,2],"operators":["multiply","power"]}' 200 '.result == 18'
 check "right-associative powers" POST "$EVAL" '{"operands":[2,3,2],"operators":["power","power"]}' 200 '.result == 512'
 check "left-associative division" POST "$EVAL" '{"operands":[100,10,2],"operators":["divide","divide"]}' 200 '.result == 5'
 check "signed operand" POST "$EVAL" '{"operands":[-2,2],"operators":["power"]}' 200 '.result == 4'
+check "single operand without operators" POST "$EVAL" '{"operands":[5]}' 200 '.result == 5 and .operands == [5] and .operators == []'
+check "single operand with empty operators" POST "$EVAL" '{"operands":[5],"operators":[]}' 200 '.result == 5 and .operators == []'
+check "single operand with null operators" POST "$EVAL" '{"operands":[5],"operators":null}' 200 '.result == 5 and .operators == []'
 check "expression arity" POST "$EVAL" '{"operands":[2,3,4],"operators":["add"]}' 400 '.error.code == "invalid_expression"'
 check "expression null operand" POST "$EVAL" '{"operands":[2,null],"operators":["add"]}' 400 '.error.code == "invalid_json"'
 check "expression unknown operator" POST "$EVAL" '{"operands":[2,3],"operators":["modulo"]}' 400 '.error.code == "invalid_expression"'

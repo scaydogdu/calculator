@@ -123,3 +123,40 @@ describe('square root applies to the current operand', () => {
     expect([digit('2'), equals].reduce(keypadReducer, state).pending?.request).toEqual({ operands: [3, 2], operators: ['add'] });
   });
 });
+
+// Literal acceptance fixtures: no frontend arithmetic or result oracle.
+describe('keypad acceptance K1–K26 with expression precedence', () => {
+  const cases = [
+    { name: 'K1 initial state', actions: [], want: { entry: '0', expression: '', pending: null, error: null } },
+    { name: 'K2 addition', actions: [digit('2'), op('add'), digit('3'), equals, resolved(5)], want: { entry: '5', expression: '2 + 3 =' } },
+    { name: 'K3 chain remains unevaluated until Equals', actions: [digit('2'), op('add'), digit('3'), op('multiply'), digit('4'), equals], request: { operands: [2, 3, 4], operators: ['add', 'multiply'] }, want: { expression: '2 + 3 × 4' } },
+    { name: 'K4 operator replacement', actions: [digit('2'), op('add'), op('multiply')], want: { operands: [2], operators: ['multiply'], pending: null } },
+    { name: 'K5 incomplete Equals', actions: [digit('2'), op('add'), equals], want: { entry: '2', expression: '2 +', pending: null } },
+    { name: 'K6 square root', actions: [digit('9'), sqrt], request: { operation: 'sqrt', operands: [9] }, want: { expression: '√9' } },
+    { name: 'K7 percent of', actions: [...digits('15'), op('percentage'), ...digits('200'), equals], request: { operands: [15, 200], operators: ['percentage'] }, want: { expression: '15 % of 200' } },
+    { name: 'K8 power', actions: [digit('2'), op('power'), ...digits('10'), equals], request: { operands: [2, 10], operators: ['power'] }, want: { expression: '2 ^ 10' } },
+    { name: 'K9 retain failing expression', actions: [digit('1'), op('divide'), digit('0'), equals, failed], want: { entry: '0', expression: '1 ÷ 0', error: 'Service unavailable', pending: null } },
+    { name: 'K10 new digit after error', actions: [digit('1'), op('divide'), digit('0'), equals, failed, digit('7')], want: { entry: '7', expression: '', error: null } },
+    { name: 'K11 fractional entry', actions: [decimal, digit('5')], want: { entry: '0.5' } },
+    { name: 'K12 duplicate decimal', actions: [digit('1'), decimal, decimal, digit('2')], want: { entry: '1.2' } },
+    { name: 'K13 leading zeros', actions: [digit('0'), digit('0'), digit('7')], want: { entry: '7' } },
+    { name: 'K14 backspace', actions: [...digits('123'), backspace], want: { entry: '12' } },
+    { name: 'K15 deleting the last digit', actions: [digit('5'), backspace, backspace], want: { entry: '0' } },
+    { name: 'K16 result backspace protection', actions: [digit('2'), op('add'), digit('3'), equals, resolved(5), backspace], want: { entry: '5', value: 5, expression: '2 + 3 =' } },
+    { name: 'K17 sign toggle', actions: [digit('5'), sign, sign], want: { entry: '5' } },
+    { name: 'K18 fifteen digit limit', actions: [...digits('1234567890123456')], want: { entry: '123456789012345' } },
+    { name: 'K19 digit starts fresh after result', actions: [digit('2'), op('add'), digit('3'), equals, resolved(5), digit('7')], want: { entry: '7', expression: '', operands: [], operators: [] } },
+    { name: 'K20 continue from result', actions: [digit('2'), op('add'), digit('3'), equals, resolved(5), op('multiply'), digit('2'), equals], request: { operands: [5, 2], operators: ['multiply'] }, want: { expression: '5 × 2' } },
+    { name: 'K21 AC during request', actions: [digit('2'), op('add'), digit('3'), equals, clear], want: initialState },
+    { name: 'K22 late settlement after AC', actions: [digit('2'), op('add'), digit('3'), equals, clear, resolved(5), failed], want: initialState },
+    { name: 'K23 network error preserves current operand', actions: [digit('2'), op('add'), digit('3'), equals, failed], want: { entry: '3', expression: '2 + 3', error: 'Service unavailable' } },
+    { name: 'K24 negative square root reaches server', actions: [digit('4'), sign, sqrt], request: { operation: 'sqrt', operands: [-4] }, want: { expression: '√(-4)' } },
+    { name: 'K25 overflowing power reaches server', actions: [digit('2'), op('power'), ...digits('1024'), equals], request: { operands: [2, 1024], operators: ['power'] }, want: { expression: '2 ^ 1024' } },
+    { name: 'K26 retain raw floating point result', actions: [decimal, digit('1'), op('add'), decimal, digit('2'), equals, resolved(0.30000000000000004)], want: { entry: '0.3', value: 0.30000000000000004, expression: '0.1 + 0.2 =' } },
+  ];
+  it.each(cases)('$name', ({ actions, want, ...test }) => {
+    const state = apply(...actions);
+    expect(state).toMatchObject(want);
+    if ('request' in test) expect(state.pending?.request).toEqual(test.request);
+  });
+});

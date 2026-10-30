@@ -54,10 +54,9 @@ button { font: inherit; }
 .key-wide { grid-column: span 2; }
 .key-tall { grid-row: span 2; }
 .key[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.key:hover:not([aria-disabled='true']) { filter: brightness(0.96); }
-.key:active:not([aria-disabled='true']) { transform: translateY(1px); }
+.key:hover { filter: brightness(0.96); }
+.key:active { transform: translateY(1px); }
 .key:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.key[aria-disabled='true'] { opacity: 0.55; cursor: wait; }
 
 @media (min-width: 640px) { .app { padding-top: 64px; } }
-@media (prefers-reduced-motion: reduce) { .key:active:not([aria-disabled='true']) { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .key:active { transform: none; } }

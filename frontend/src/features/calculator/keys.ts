@@ -1,11 +1,11 @@
-import type { Action } from './keypadReducer';
+import type { InputAction } from './keypadReducer';
 
 interface KeyDefinition {
   id: string;
   label: string;
   ariaLabel: string;
   kind: 'digit' | 'op' | 'fn' | 'equals';
-  action: Action;
+  action: InputAction;
   span?: 'wide' | 'tall';
 }
 
@@ -34,14 +34,14 @@ export const KEYS: readonly KeyDefinition[] = [
   { id: 'decimal', label: '.', ariaLabel: 'Decimal point', kind: 'digit', action: { type: 'decimal' } },
 ];
 
-export function keyboardAction(key: string): Action | null {
+export function keyboardAction(key: string): InputAction | null {
   if (/^\d$/.test(key)) return { type: 'digit', digit: key };
   switch (key) {
     case '.': case ',': return { type: 'decimal' };
     case '+': return { type: 'operator', op: 'add' };
-    case '-': return { type: 'operator', op: 'subtract' };
-    case '*': case 'x': return { type: 'operator', op: 'multiply' };
-    case '/': return { type: 'operator', op: 'divide' };
+    case '-': case '−': return { type: 'operator', op: 'subtract' };
+    case '*': case 'x': case '×': return { type: 'operator', op: 'multiply' };
+    case '/': case '÷': return { type: 'operator', op: 'divide' };
     case '^': return { type: 'operator', op: 'power' };
     case '%': return { type: 'operator', op: 'percentage' };
     case 'Enter': case '=': return { type: 'equals' };

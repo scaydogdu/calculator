@@ -31,8 +31,7 @@ describe('calculator integration and accessibility', () => {
     const equals = screen.getByRole('button', { name: 'Equals' });
     expect(equals).toHaveFocus();
     expect(equals).toBeEnabled();
-    expect(equals).toHaveAttribute('aria-disabled', 'true');
-    await user.keyboard('99+');
+    expect(equals).not.toHaveAttribute('aria-disabled');
     expect(result()).toHaveTextContent(/^3$/);
     await act(async () => finish(sum));
     expect(result()).toHaveTextContent(/^5$/);

@@ -51,12 +51,12 @@ curl http://localhost:8080/api/v1/evaluate \
 ```
 
 ```json
-{"result":14}
+{"operands":[2,3,4],"operators":["add","multiply"],"result":14}
 ```
 
-`/calculate` evaluates one operation, for example `{"operation":"sqrt","operands":[144]}` returns `{"operation":"sqrt","operands":[144],"result":12}`. Supported operations: `add`, `subtract`, `multiply`, `divide`, `power`, `sqrt`, and `percentage`. Square root takes one operand; the others take two. Percentage means **a% of b**, `(a / 100) * b`.
+Both endpoints return the request fields plus `result`. `/evaluate` handles ordered binary expressions; a single operand needs no operators (omitted/null operators normalize to `[]`). To preserve existing API clients, `/calculate` remains the single-operation endpoint, including square root, for example `{"operation":"sqrt","operands":[144]}` returns `{"operation":"sqrt","operands":[144],"result":12}`. Supported operations: `add`, `subtract`, `multiply`, `divide`, `power`, `sqrt`, and `percentage`. Square root takes one operand; the others take two. Percentage means **a% of b**, `(a / 100) * b`.
 
-Errors use `{"error":{"code":"...","message":"..."}}`: 400 for invalid requests, 404 for unknown API routes, 405 for unsupported calculation methods, **413 `request_too_large` for bodies over 1 MiB**, 422 for `division_by_zero`, `negative_sqrt`, `non_real_result` or `result_overflow`, and 500 for unexpected failures. Unknown fields, null operands, numeric strings and trailing JSON are rejected.
+Errors use `{"error":{"code":"...","message":"..."}}`: 400 for `invalid_json`, `unknown_field`, `unknown_operation`, `invalid_operands` or `invalid_expression`, 404 for unknown API routes, 405 for unsupported calculation methods, **413 `request_too_large` for bodies over 1 MiB**, 422 for `division_by_zero`, `negative_sqrt`, `non_real_result` or `result_overflow`, and 500 for unexpected failures. Unknown fields, null operands, numeric strings and trailing JSON are rejected.
 
 ## Tests and checks
 
@@ -81,11 +81,11 @@ CI runs Go vet, Staticcheck, govulncheck, race tests, frontend lint/type checkin
 
 ## Design decisions
 
-- A pure reducer records the expression until Equals; Go evaluates powers first (right associative), then multiplication/division/percent-of, then addition/subtraction (left associative): `2 + 3 × 4 = 14`, `2 ^ 3 ^ 2 = 512`. Expressions allow up to 128 operands. Square root applies immediately to the current operand. Signed operands are shown in parentheses: `(-2) ^ 2 = 4`. Unrounded backend results are retained for subsequent operations; fractional or large results use 12 significant digits. Rounded whole-number digits are shown in scientific notation, for example `-1.76366841446e+13`; exact integers below 1e15 retain all their digits.
+- A pure reducer records the expression until Equals; Go evaluates powers first (right associative), then multiplication/division/percent-of, then addition/subtraction (left associative): `2 + 3 × 4 = 14`, `2 ^ 3 ^ 2 = 512`. Expressions allow up to 128 operands. Square root applies immediately to the displayed operand. After an operator, that is the selected preceding operand: `9 + √x` becomes `3 +`, and `9 + √x 4 =` gives `7`. To take the root of a new right operand, enter it first: `9 + 16 √x = 13`. Signed operands are shown in parentheses: `(-2) ^ 2 = 4`. Unrounded backend results are retained for subsequent operations; fractional or large results use 12 significant digits. Rounded whole-number digits are shown in scientific notation, for example `-1.76366841446e+13`; exact integers below 1e15 retain all their digits.
 - A synchronous ref holds the latest pure-reducer snapshot so rapid input events cannot read stale state; React state renders that same component-local snapshot.
 - Input events call one controller hook directly. It applies pure keypad transitions and sends each submitted calculation to the backend using native `fetch`, without caching or automatic retries. One request controller enforces a 20-second deadline, aborts on AC/unmount and ignores late replies. Offline requests fail instead of being queued.
 - IEEE-754 float64 is used throughout. Non-real and non-finite results are rejected; this is not arbitrary-precision decimal arithmetic.
-- Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending. Long numbers shrink to fit narrow displays, keeping every typed digit visible without horizontal scrolling.
+- Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Input entered while a request is pending is queued and replayed in order after success; `2 + 3 = × 2 =` gives `10` even when typed quickly. AC immediately cancels the request and clears queued input. Errors, timeouts and unmounting also discard queued input. Long numbers shrink to fit narrow displays, keeping every typed digit visible without horizontal scrolling.
 - Go uses the standard library for routing, JSON and logging. The minimum version and container build use the patched Go 1.27.3 release. It bounds request bodies and read/write/idle time, shuts down gracefully, and disables directory listings.
 - Production responses include `nosniff`, a same-origin Content Security Policy and `strict-origin-when-cross-origin` referrer policy. Development uses Vite's separate server.
 

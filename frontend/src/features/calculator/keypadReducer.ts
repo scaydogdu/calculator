@@ -23,6 +23,7 @@ export type Action =
   | { type: 'toggleSign' } | { type: 'clear' } | { type: 'operator'; op: BinaryOp }
   | { type: 'sqrt' } | { type: 'equals' }
   | { type: 'resolved'; result: number } | { type: 'failed'; message: string };
+export type InputAction = Exclude<Action, { type: 'resolved' | 'failed' }>;
 export const initialState: KeypadState = {
   entry: '0', value: null, operands: [], operators: [], expression: '', overwrite: false, error: null, pending: null,
 };

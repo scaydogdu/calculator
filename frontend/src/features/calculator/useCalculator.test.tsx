@@ -98,3 +98,66 @@ describe('event-driven calculator requests', () => {
     expect(calculate.mock.calls[0][1].aborted).toBe(false);
   });
 });
+
+describe('queued input', () => {
+  function continuation(send: (action: import('./keypadReducer').InputAction) => void) {
+    send({ type: 'operator', op: 'multiply' });
+    send({ type: 'digit', digit: '2' });
+    send({ type: 'equals' });
+  }
+  it('replays multiple continuations in order across successive requests', async () => {
+    const finishes: ((value: CalculateResponse) => void)[] = [];
+    const calculate = vi.fn(() => new Promise<CalculateResponse>(resolve => finishes.push(resolve)));
+    const { result, enterSum } = setup(calculate);
+    act(() => { enterSum(); continuation(result.current.send); continuation(result.current.send); });
+    expect(calculate).toHaveBeenCalledOnce();
+    await act(async () => finishes[0]({ result: 5 }));
+    expect(calculate).toHaveBeenNthCalledWith(2, { operands: [5, 2], operators: ['multiply'] }, expect.any(AbortSignal));
+    await act(async () => finishes[1]({ result: 10 }));
+    expect(calculate).toHaveBeenNthCalledWith(3, { operands: [10, 2], operators: ['multiply'] }, expect.any(AbortSignal));
+    await act(async () => finishes[2]({ result: 20 }));
+    expect(result.current.state.entry).toBe('20');
+  });
+  it('replays input after a unary request without dropping its expression', async () => {
+    let finish!: (value: CalculateResponse) => void;
+    const calculate = vi.fn().mockImplementationOnce(() => new Promise<CalculateResponse>(resolve => { finish = resolve; })).mockResolvedValueOnce({ result: 7 });
+    const { result } = setup(calculate);
+    act(() => {
+      result.current.send({ type: 'digit', digit: '9' });
+      result.current.send({ type: 'operator', op: 'add' });
+      result.current.send({ type: 'sqrt' });
+      result.current.send({ type: 'digit', digit: '4' });
+      result.current.send({ type: 'equals' });
+    });
+    await act(async () => finish({ result: 3 }));
+    expect(calculate).toHaveBeenLastCalledWith({ operands: [3, 4], operators: ['add'] }, expect.any(AbortSignal));
+    expect(result.current.state.entry).toBe('7');
+  });
+  it.each(['clear', 'failure', 'timeout', 'unmount'] as const)('discards queued input on %s', async outcome => {
+    vi.useFakeTimers();
+    let finish!: (value: CalculateResponse) => void;
+    let fail!: (error: Error) => void;
+    const calculate = vi.fn(() => new Promise<CalculateResponse>((resolve, reject) => { finish = resolve; fail = reject; }));
+    const { result, enterSum, unmount } = setup(calculate);
+    act(() => { enterSum(); continuation(result.current.send); });
+    await act(async () => {
+      if (outcome === 'clear') result.current.send({ type: 'clear' });
+      if (outcome === 'failure') fail(new Error('offline'));
+      if (outcome === 'timeout') await vi.advanceTimersByTimeAsync(20_000);
+      if (outcome === 'unmount') unmount();
+    });
+    await act(async () => finish(sum));
+    expect(calculate).toHaveBeenCalledOnce();
+    if (outcome !== 'unmount') {
+      expect(result.current.state.pending).toBeNull();
+      if (outcome === 'clear') expect(result.current.state.entry).toBe('0');
+      else expect(result.current.state.error).not.toBeNull();
+      // A later valid request must not replay the discarded continuation.
+      await act(async () => enterSum());
+      await act(async () => finish(sum));
+      expect(calculate).toHaveBeenCalledTimes(2);
+      expect(result.current.state.entry).toBe('5');
+    }
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

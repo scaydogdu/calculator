@@ -100,8 +100,8 @@ func TestSpecificErrorCodesAndMessages(t *testing.T) {
 		body, code, message string
 		status              int
 	}{
-		{`{"operation":"sqrt","operands":[4,9]}`, "invalid_operands", "wrong number of operands: sqrt takes 1, got 2", 400},
-		{`{"operation":"add","operands":[4]}`, "invalid_operands", "wrong number of operands: add takes 2, got 1", 400},
+		{`{"operation":"sqrt","operands":[4,9]}`, "invalid_operands", "Incorrect number of operands for the operation.", 400},
+		{`{"operation":"add","operands":[4]}`, "invalid_operands", "Incorrect number of operands for the operation.", 400},
 		{`{"operation":"power","operands":[-8,0.5]}`, "non_real_result", "The result is not a real number.", 422},
 		{`{"operation":"multiply","operands":[1e308,10]}`, "result_overflow", "The result is too large to represent.", 422},
 		{`{"operation":"power","operands":[0,-1]}`, "division_by_zero", "Division by zero is undefined.", 422},

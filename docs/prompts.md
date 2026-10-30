@@ -1,15 +1,11 @@
-# AI assistance and selected prompts
+# AI assistance
 
-Built with AI assistance (Codex implementation, Claude review); ~6 hours elapsed.
+AI assistance was used for planning, implementation, test design and review. Codex assisted implementation; Claude assisted earlier reviews.
 
-Selected excerpts from the development prompts:
+Selected user requests:
 
-> Follow TDD exactly as written, and make one commit per task with the commit messages given.
+> Prioritize correctness … over extra features.
 
-> Don’t change the API contract (endpoint, field names, error codes, status codes): QA tests it independently with qa/api_contract_test.sh and docs/qa/acceptance-checklist.md.
+> isnt it better to have x and division a priority like real calculators?
 
-> Read docs/qa/qa-round-2.md and fix the two majors and two minors with TDD, writing a failing component test for each major first.
-
-> Type `9 + 16 √x =` and you get `4` instead of `13`.
-
-These requests guided implementation, independent QA and regression fixes. Setup, design decisions and validation commands are in the [README](../README.md); measured coverage is in the [coverage summary](coverage.md).
+Setup and design decisions are in the [README](../README.md); reproducible test measurements are in the [coverage summary](coverage.md).

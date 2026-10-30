@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, type CalculateFn } from '../../api/calculator';
 import { errorMessage } from './errorMessage';
-import { initialState, keypadReducer, type Action } from './keypadReducer';
+import { initialState, keypadReducer, type Action, type InputAction } from './keypadReducer';
 
 interface Request {
   controller: AbortController;
@@ -10,10 +10,10 @@ interface Request {
 
 export function useCalculator(calculate: CalculateFn) {
   const [state, setState] = useState(initialState);
-  // Consecutive key events must use the latest reducer snapshot, even when
-  // React batches their renders. Both references point at the same snapshot.
+  // Consecutive key events share the latest snapshot, including batched renders.
   const current = useRef(initialState);
   const active = useRef<Request | null>(null);
+  const queued = useRef<InputAction[]>([]);
 
   const update = useCallback((action: Action) => {
     current.current = keypadReducer(current.current, action);
@@ -21,43 +21,52 @@ export function useCalculator(calculate: CalculateFn) {
     return current.current;
   }, []);
 
-  const cancel = useCallback((reason?: Error) => {
+  const cancel = useCallback(() => {
+    queued.current = [];
     const request = active.current;
     active.current = null;
     if (request) {
       clearTimeout(request.timer);
-      request.controller.abort(reason);
+      request.controller.abort();
     }
   }, []);
   useEffect(() => () => cancel(), [cancel]);
 
-  const send = useCallback((action: Action) => {
+  const send = useCallback(function send(action: InputAction) {
     if (action.type === 'clear') cancel();
-    const previous = current.current.pending;
+    if (active.current) {
+      queued.current.push(action);
+      return;
+    }
     const { pending } = update(action);
-    if (!pending || pending === previous) return;
+    if (!pending) return;
 
     const controller = new AbortController();
+    function settle(outcome: Extract<Action, { type: 'resolved' | 'failed' }>) {
+      // AC and unmount invalidate the identity even if transport ignores abort.
+      if (active.current !== request) return;
+      clearTimeout(request.timer);
+      active.current = null;
+      update(outcome);
+      if (outcome.type === 'failed') queued.current = [];
+      // Stop when replay starts another request; resume after its result.
+      while (queued.current.length && !active.current) send(queued.current.shift()!);
+    }
     const request: Request = {
       controller,
       timer: setTimeout(() => {
         const error = new ApiError('request_timeout', 'Request timed out.', 0);
-        cancel(error);
-        update({ type: 'failed', message: errorMessage(error) });
+        controller.abort();
+        settle({ type: 'failed', message: errorMessage(error) });
       }, 20_000),
     };
     active.current = request;
-    // Only input events start I/O. Request identity guards late replies after
-    // AC, deadline expiry or unmount, even if a transport ignores abort.
     void (async () => {
       try {
         const result = await calculate(pending.request, controller.signal);
-        if (active.current === request) update({ type: 'resolved', result: result.result });
+        settle({ type: 'resolved', result: result.result });
       } catch (error) {
-        if (active.current === request) update({ type: 'failed', message: errorMessage(error) });
-      } finally {
-        clearTimeout(request.timer);
-        if (active.current === request) active.current = null;
+        settle({ type: 'failed', message: errorMessage(error) });
       }
     })();
   }, [calculate, update, cancel]);

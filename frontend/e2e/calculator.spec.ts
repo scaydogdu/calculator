@@ -32,7 +32,7 @@ test('submits the full expression on Equals and evaluates precedence in Go', asy
   await button('Equals').click();
   const response = await evaluation;
   expect(response.status()).toBe(200);
-  expect(await response.json()).toEqual({ result: 14 });
+  expect(await response.json()).toEqual({ operands: [2, 3, 4], operators: ['add', 'multiply'], result: 14 });
   expect(requests).toEqual([{ operands: [2, 3, 4], operators: ['add', 'multiply'] }]);
   await expect(page.getByRole('status', { name: 'Result' })).toHaveText('14');
   await expect(page.getByLabel('Expression')).toHaveText('2 + 3 × 4 =');
@@ -185,4 +185,27 @@ test('distinguishes non-real, overflowing and zero-power domain errors', async (
   await page.getByRole('button', { name: 'Toggle sign' }).click();
   await page.keyboard.type('=');
   await expect(alert).toHaveText("You can't divide by zero.");
+});
+
+for (const input of ['keyboard', 'clicks'] as const) {
+  test(`buffers ${input} while the server is calculating`, async ({ page }) => {
+    let delayedRoute: Route | undefined;
+    await page.route('**/api/v1/evaluate', async route => {
+      if (route.request().postDataJSON().operators[0] === 'add') delayedRoute = route;
+      else await route.continue();
+    });
+    await page.keyboard.type('2+3=');
+    await expect.poll(() => !!delayedRoute).toBe(true);
+    if (input === 'keyboard') await page.keyboard.type('*2=');
+    else for (const name of ['Multiply', '2', 'Equals']) await page.getByRole('button', { name, exact: true }).click();
+    await delayedRoute!.continue();
+    await expect(page.getByRole('status', { name: 'Result' })).toHaveText('10');
+    await expect(page.getByLabel('Expression')).toHaveText('5 × 2 =');
+  });
+}
+
+test('square root after an operator transforms the selected operand', async ({ page }) => {
+  await page.keyboard.type('9+r4=');
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('7');
+  await expect(page.getByLabel('Expression')).toHaveText('3 + 4 =');
 });
