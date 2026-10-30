@@ -81,7 +81,7 @@ calculator/
 **Files:**
 - Create: `calculator/.gitignore`, `calculator/backend/go.mod`
 
-- [ ] **Step 1: Install Go** (it is not on this machine; Node 22, Docker and gh are)
+- [x] **Step 1: Install Go** (it is not on this machine; Node 22, Docker and gh are)
 
 ```bash
 brew install go
@@ -89,7 +89,7 @@ go version
 ```
 Expected: `go version go1.2x.x darwin/arm64`. Use that `1.2x` in `go.mod` and in the Dockerfile's `golang:` tag.
 
-- [ ] **Step 2: Initialise the repository**
+- [x] **Step 2: Initialise the repository**
 
 ```bash
 cd /Users/aydogdu/Documents/Claud/calculator
@@ -97,7 +97,7 @@ git init -b main
 mkdir -p backend && cd backend && go mod init github.com/aydogdu/calculator/backend
 ```
 
-- [ ] **Step 3: Write `.gitignore`**
+- [x] **Step 3: Write `.gitignore`**
 
 ```gitignore
 # Go
@@ -114,7 +114,7 @@ frontend/coverage/
 .vscode/
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A && git commit -m "chore: initialise repository"
@@ -128,7 +128,7 @@ git add -A && git commit -m "chore: initialise repository"
 - Create: `backend/internal/calculator/calculator.go`
 - Test: `backend/internal/calculator/calculator_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package calculator
@@ -195,12 +195,12 @@ func TestErrorMessagesAreDescriptive(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test and check that it fails**
+- [x] **Step 2: Run the test and check that it fails**
 
 Run: `cd backend && go test ./internal/calculator/`
 Expected: FAIL, `undefined: Operation` (compile error).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```go
 // Package calculator holds the arithmetic and its domain rules. It knows
@@ -279,12 +279,12 @@ func Calculate(op Operation, operands []float64) (float64, error) {
 }
 ```
 
-- [ ] **Step 4: Run the test and check that it passes**
+- [x] **Step 4: Run the test and check that it passes**
 
 Run: `go test ./internal/calculator/ -cover`
 Expected: `ok … coverage: 100.0% of statements`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend && git commit -m "feat(backend): calculator domain with typed errors"
@@ -298,7 +298,7 @@ git add backend && git commit -m "feat(backend): calculator domain with typed er
 - Create: `backend/internal/httpapi/respond.go`, `calculate.go`, `routes.go`, `server.go`
 - Test: `backend/internal/httpapi/calculate_test.go`, `backend/internal/httpapi/server_test.go`
 
-- [ ] **Step 1: Write the failing handler test** (`calculate_test.go`)
+- [x] **Step 1: Write the failing handler test** (`calculate_test.go`)
 
 ```go
 package httpapi
@@ -394,7 +394,7 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder, v any) {
 }
 ```
 
-- [ ] **Step 2: Write the failing server test** (`server_test.go`)
+- [x] **Step 2: Write the failing server test** (`server_test.go`)
 
 ```go
 package httpapi
@@ -469,12 +469,12 @@ func TestServesStaticFiles(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Run the tests and check that they fail**
+- [x] **Step 3: Run the tests and check that they fail**
 
 Run: `go test ./internal/httpapi/`
 Expected: FAIL, `undefined: NewServer`.
 
-- [ ] **Step 4: Implement `respond.go`**
+- [x] **Step 4: Implement `respond.go`**
 
 ```go
 package httpapi
@@ -504,7 +504,7 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 }
 ```
 
-- [ ] **Step 5: Implement `calculate.go`**
+- [x] **Step 5: Implement `calculate.go`**
 
 ```go
 package httpapi
@@ -583,7 +583,7 @@ func classify(err error) (int, string) {
 
 Note: if `dec.More()` returns true for `{...}{}`, the request is rejected as trailing data. A body of `{...}  ` (whitespace only after the object) passes.
 
-- [ ] **Step 6: Implement `routes.go`**
+- [x] **Step 6: Implement `routes.go`**
 
 ```go
 package httpapi
@@ -624,7 +624,7 @@ func handleNotFound() http.Handler {
 }
 ```
 
-- [ ] **Step 7: Implement `server.go`**
+- [x] **Step 7: Implement `server.go`**
 
 ```go
 // Package httpapi exposes the calculator over HTTP/JSON.
@@ -679,12 +679,12 @@ func withRecover(logger *slog.Logger, next http.Handler) http.Handler {
 }
 ```
 
-- [ ] **Step 8: Run the tests and check that they pass**
+- [x] **Step 8: Run the tests and check that they pass**
 
 Run: `go test ./internal/... -race -cover`
 Expected: both packages `ok`. httpapi coverage should be about 95% or higher.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add backend && git commit -m "feat(backend): HTTP API with JSON error envelope"
@@ -698,7 +698,7 @@ git add backend && git commit -m "feat(backend): HTTP API with JSON error envelo
 - Create: `backend/cmd/server/main.go`
 - Test: `backend/cmd/server/main_test.go`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```go
 package main
@@ -790,12 +790,12 @@ func waitForReady(t *testing.T, url string) {
 }
 ```
 
-- [ ] **Step 2: Run the test and check that it fails**
+- [x] **Step 2: Run the test and check that it fails**
 
 Run: `go test ./cmd/server/`
 Expected: FAIL, `undefined: run`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```go
 // Command server runs the calculator HTTP API.
@@ -860,14 +860,14 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 }
 ```
 
-- [ ] **Step 4: Run all backend checks**
+- [x] **Step 4: Run all backend checks**
 
 ```bash
 go vet ./... && go test ./... -race -cover
 ```
 Expected: three `ok` lines, and no output from vet.
 
-- [ ] **Step 5: Smoke test by hand**
+- [x] **Step 5: Smoke test by hand**
 
 ```bash
 go run ./cmd/server &
@@ -876,7 +876,7 @@ kill %1
 ```
 Expected: `{"error":{"code":"division_by_zero","message":"division by zero"}}`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add backend && git commit -m "feat(backend): server entry point with graceful shutdown"
@@ -891,7 +891,7 @@ git add backend && git commit -m "feat(backend): server entry point with gracefu
 - Modify: `frontend/vite.config.ts`, `frontend/package.json` scripts, `frontend/src/App.tsx`, `frontend/src/index.css`
 - Delete: `frontend/src/App.css`, `frontend/src/assets/`, `frontend/public/vite.svg`
 
-- [ ] **Step 1: Scaffold and install dependencies**
+- [x] **Step 1: Scaffold and install dependencies**
 
 ```bash
 cd /Users/aydogdu/Documents/Claud/calculator
@@ -901,7 +901,7 @@ npm install -D vitest @vitest/coverage-v8 jsdom @testing-library/react @testing-
 rm -rf src/App.css src/assets public/vite.svg
 ```
 
-- [ ] **Step 2: Replace `vite.config.ts`**
+- [x] **Step 2: Replace `vite.config.ts`**
 
 ```ts
 import react from '@vitejs/plugin-react';
@@ -926,13 +926,13 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Write `src/test/setup.ts`**
+- [x] **Step 3: Write `src/test/setup.ts`**
 
 ```ts
 import '@testing-library/jest-dom/vitest';
 ```
 
-- [ ] **Step 4: Add scripts to `package.json`** (keep the `dev`, `build`, `lint` and `preview` scripts that the scaffold generated)
+- [x] **Step 4: Add scripts to `package.json`** (keep the `dev`, `build`, `lint` and `preview` scripts that the scaffold generated)
 
 ```json
 "test": "vitest run",
@@ -941,7 +941,7 @@ import '@testing-library/jest-dom/vitest';
 "typecheck": "tsc -b"
 ```
 
-- [ ] **Step 5: Replace `src/App.tsx` with a stub so the build stays green until Task 8**
+- [x] **Step 5: Replace `src/App.tsx` with a stub so the build stays green until Task 8**
 
 ```tsx
 export default function App() {
@@ -954,12 +954,12 @@ export default function App() {
 ```
 Also remove the `App.css` import if `main.tsx` has one, and empty `src/index.css` (it is rewritten in Task 8).
 
-- [ ] **Step 6: Verify**
+- [x] **Step 6: Verify**
 
 Run: `npm run typecheck && npm run build && npm test -- --passWithNoTests`
 Expected: all three succeed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend && git commit -m "chore(frontend): scaffold Vite React-TS with Vitest"
@@ -973,7 +973,7 @@ git add frontend && git commit -m "chore(frontend): scaffold Vite React-TS with 
 - Create: `frontend/src/api/calculator.ts`
 - Test: `frontend/src/api/calculator.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -1030,12 +1030,12 @@ describe('calculate', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and check that it fails**
+- [x] **Step 2: Run the test and check that it fails**
 
 Run: `npm test -- src/api`
 Expected: FAIL, cannot resolve `./calculator`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 export type Operation = 'add' | 'subtract' | 'multiply' | 'divide' | 'power' | 'sqrt' | 'percentage';
@@ -1091,12 +1091,12 @@ export const calculate: CalculateFn = async (operation, operands, signal) => {
 };
 ```
 
-- [ ] **Step 4: Run the test and check that it passes**
+- [x] **Step 4: Run the test and check that it passes**
 
 Run: `npm test -- src/api`
 Expected: 5 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/api && git commit -m "feat(frontend): typed API client with ApiError"
@@ -1110,7 +1110,7 @@ git add frontend/src/api && git commit -m "feat(frontend): typed API client with
 - Create: `frontend/src/features/calculator/operations.ts`, `validation.ts`, `format.ts`
 - Test: `operations.test.ts`, `validation.test.ts`, `format.test.ts` (same folder)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `operations.test.ts`
 ```ts
@@ -1194,12 +1194,12 @@ describe('formatExpression', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests and check that they fail**
+- [x] **Step 2: Run the tests and check that they fail**
 
 Run: `npm test -- src/features`
 Expected: FAIL, modules not found.
 
-- [ ] **Step 3: Implement `operations.ts`**
+- [x] **Step 3: Implement `operations.ts`**
 
 ```ts
 import type { Operation } from '../../api/calculator';
@@ -1228,7 +1228,7 @@ export function getOperation(id: Operation): OperationInfo {
 }
 ```
 
-- [ ] **Step 4: Implement `validation.ts`**
+- [x] **Step 4: Implement `validation.ts`**
 
 ```ts
 export type ParseResult = { ok: true; value: number } | { ok: false; error: string };
@@ -1267,7 +1267,7 @@ export function validateInputs(arity: 1 | 2, a: string, b: string): ValidationRe
 }
 ```
 
-- [ ] **Step 5: Implement `format.ts`**
+- [x] **Step 5: Implement `format.ts`**
 
 ```ts
 import type { Operation } from '../../api/calculator';
@@ -1292,12 +1292,12 @@ export function formatExpression(operation: Operation, operands: number[], resul
 }
 ```
 
-- [ ] **Step 6: Run the tests and check that they pass**
+- [x] **Step 6: Run the tests and check that they pass**
 
 Run: `npm test -- src/features`
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend/src/features && git commit -m "feat(frontend): operation metadata, input validation, result formatting"
@@ -1311,7 +1311,7 @@ git add frontend/src/features && git commit -m "feat(frontend): operation metada
 - Create: `frontend/src/features/calculator/useCalculation.ts`
 - Test: `frontend/src/features/calculator/useCalculation.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -1361,12 +1361,12 @@ describe('useCalculation', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and check that it fails**
+- [x] **Step 2: Run the test and check that it fails**
 
 Run: `npm test -- useCalculation`
 Expected: FAIL, module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -1408,12 +1408,12 @@ export function useCalculation(calculate: CalculateFn) {
 }
 ```
 
-- [ ] **Step 4: Run the test and check that it passes**
+- [x] **Step 4: Run the test and check that it passes**
 
 Run: `npm test -- useCalculation`
 Expected: 3 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend/src/features && git commit -m "feat(frontend): useCalculation hook with stale-response guard"
@@ -1428,7 +1428,7 @@ git add frontend/src/features && git commit -m "feat(frontend): useCalculation h
 - Test: `frontend/src/features/calculator/Calculator.test.tsx`
 - Modify: `frontend/src/App.tsx`, `frontend/src/index.css`, `frontend/index.html` (`<title>Calculator</title>`)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -1497,12 +1497,12 @@ describe('Calculator', () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and check that it fails**
+- [x] **Step 2: Run the test and check that it fails**
 
 Run: `npm test -- Calculator`
 Expected: FAIL, module not found.
 
-- [ ] **Step 3: Implement `NumberField.tsx`**
+- [x] **Step 3: Implement `NumberField.tsx`**
 
 ```tsx
 interface NumberFieldProps {
@@ -1534,7 +1534,7 @@ export function NumberField({ id, label, value, onChange, error }: NumberFieldPr
 }
 ```
 
-- [ ] **Step 4: Implement `Calculator.tsx`**
+- [x] **Step 4: Implement `Calculator.tsx`**
 
 ```tsx
 import { useState, type FormEvent } from 'react';
@@ -1605,7 +1605,7 @@ export function Calculator({ calculate = apiCalculate }: CalculatorProps) {
 }
 ```
 
-- [ ] **Step 5: Replace `App.tsx`**
+- [x] **Step 5: Replace `App.tsx`**
 
 ```tsx
 import { Calculator } from './features/calculator/Calculator';
@@ -1620,7 +1620,7 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 6: Replace `index.css`** (mobile-first, light and dark)
+- [x] **Step 6: Replace `index.css`** (mobile-first, light and dark)
 
 ```css
 :root {
@@ -1722,7 +1722,7 @@ button[type='submit']:disabled { opacity: 0.6; cursor: progress; }
 }
 ```
 
-- [ ] **Step 7: Run all frontend checks**
+- [x] **Step 7: Run all frontend checks**
 
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build
@@ -1731,7 +1731,7 @@ Expected: everything green. If ESLint flags `react-refresh/only-export-component
 
 - [ ] **Step 8: Check in the browser**: start the backend with `go run ./cmd/server` and the frontend with `npm run dev`. Open http://localhost:5173 and test add, divide by zero, sqrt, and bad input at 375px and desktop widths. Take a screenshot.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add frontend && git commit -m "feat(frontend): calculator UI with validation and responsive layout"
@@ -1744,7 +1744,7 @@ git add frontend && git commit -m "feat(frontend): calculator UI with validation
 **Files:**
 - Create: `Dockerfile`, `.dockerignore`
 
-- [ ] **Step 1: Write `Dockerfile`** (set the `golang:` tag to the Go version from Task 0)
+- [x] **Step 1: Write `Dockerfile`** (set the `golang:` tag to the Go version from Task 0)
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -1772,7 +1772,7 @@ USER nonroot:nonroot
 ENTRYPOINT ["/server"]
 ```
 
-- [ ] **Step 2: Write `.dockerignore`**
+- [x] **Step 2: Write `.dockerignore`**
 
 ```
 **/node_modules
@@ -1783,7 +1783,7 @@ backend/coverage.*
 docs
 ```
 
-- [ ] **Step 3: Build and smoke test**
+- [x] **Step 3: Build and smoke test**
 
 ```bash
 docker build -t calculator .
@@ -1794,7 +1794,7 @@ docker stop calc
 ```
 Expected: `{"operation":"power","operands":[2,10],"result":1024}`, then `200`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add Dockerfile .dockerignore && git commit -m "build: single-container Dockerfile"
@@ -1807,7 +1807,7 @@ git add Dockerfile .dockerignore && git commit -m "build: single-container Docke
 **Files:**
 - Create: `Makefile`, `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Write `Makefile`** (recipes are indented with tabs)
+- [x] **Step 1: Write `Makefile`** (recipes are indented with tabs)
 
 ```make
 .PHONY: test coverage run-backend run-frontend docker
@@ -1830,7 +1830,7 @@ docker:
 	docker build -t calculator . && docker run --rm -p 8080:8080 calculator
 ```
 
-- [ ] **Step 2: Write `.github/workflows/ci.yml`**
+- [x] **Step 2: Write `.github/workflows/ci.yml`**
 
 ```yaml
 name: CI
@@ -1872,12 +1872,12 @@ jobs:
       - run: docker build -t calculator .
 ```
 
-- [ ] **Step 3: Verify locally**
+- [x] **Step 3: Verify locally**
 
 Run: `make test && make coverage`
 Expected: everything green, and coverage totals printed for both layers.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add Makefile .github && git commit -m "ci: Makefile targets and GitHub Actions workflow"
@@ -1890,7 +1890,7 @@ git add Makefile .github && git commit -m "ci: Makefile targets and GitHub Actio
 **Files:**
 - Create: `README.md`, `docs/coverage.md`, `docs/prompts.md`
 
-- [ ] **Step 1: Write `README.md`** with these sections in this order:
+- [x] **Step 1: Write `README.md`** with these sections in this order:
   1. **Title + one-paragraph summary** and the CI badge (`![CI](https://github.com/<owner>/calculator/actions/workflows/ci.yml/badge.svg)`, with the owner filled in after Task 12).
   2. **Features**: the seven operations, with `percentage` defined as "a% of b".
   3. **Prerequisites**: Go 1.2x+, Node 22+, Docker (optional).
@@ -1911,11 +1911,11 @@ git add Makefile .github && git commit -m "ci: Makefile targets and GitHub Actio
   10. **Design decisions and assumptions**: the 9 decisions at the top of this plan, plus these assumptions: float64 semantics (IEEE-754), no auth or rate limiting (out of scope), and no calculation history (YAGNI).
   11. **AI usage**: link to `docs/prompts.md` and this plan.
 
-- [ ] **Step 2: Write `docs/coverage.md`**: run `make coverage`, then paste the `go tool cover -func` total, the per-package `go test -cover` lines and the Vitest coverage text table. Explain any uncovered lines (for example `main()` itself, which `run()` tests cover in its place).
+- [x] **Step 2: Write `docs/coverage.md`**: run `make coverage`, then paste the `go tool cover -func` total, the per-package `go test -cover` lines and the Vitest coverage text table. Explain any uncovered lines (for example `main()` itself, which `run()` tests cover in its place).
 
-- [ ] **Step 3: Write `docs/prompts.md`**: record each prompt given to the AI, verbatim and in order. Start with the original assignment prompt and "first step is to check github repositories for best practices and then come up with a plan.", then add one line per prompt on what it produced.
+- [x] **Step 3: Write `docs/prompts.md`**: record each prompt given to the AI, verbatim and in order. Start with the original assignment prompt and "first step is to check github repositories for best practices and then come up with a plan.", then add one line per prompt on what it produced.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add README.md docs && git commit -m "docs: README, coverage report, prompts"
@@ -1940,3 +1940,7 @@ gh repo create calculator --public --source . --remote origin --push
 - **Spec coverage:** the four operations and all three optional ones are in Task 1. The intuitive UI, validation, error handling and responsive layout are in Tasks 6–8. The REST endpoints, validation and edge cases (div/0, invalid data, overflow) are in Task 2. JSON results are in Task 2. Unit tests for both layers are in Tasks 1–3 and 5–8. The coverage report is in Tasks 10–11. The README with setup, how to run, API examples and design decisions is in Task 11. The Dockerfile is in Task 9. Prompts are in Task 11. The Git repository is set up in Tasks 0 and 12.
 - **Type consistency:** `CalculateFn(operation, operands, signal?)` is used the same way in the client, the hook and the component. The `FieldErrors {a, b}` keys match the `NumberField` ids. The error codes in `classify` match the tests and the README table.
 - **Time budget:** the backend (Tasks 1–3) is about 60 min, the frontend (Tasks 4–8) about 75 min, and Docker, CI and docs (Tasks 9–11) about 45 min. That fits in about 3 hours.
+
+## Execution status (2026-10-30)
+
+Tasks 0–11 implemented locally; Task 8 browser/screenshot verification remains blocked by denied local-browser permission. Go was already installed, so Task 0 did not run Homebrew installation. Independent API acceptance tests passed 40/40 on both the local server and the Docker container. See `docs/implementation-progress.md` for measured results and recorded implementation corrections. Task 12 was intentionally not started. Checkmarks describe completed work or already-satisfied prerequisites; browser checks remain unchecked.
