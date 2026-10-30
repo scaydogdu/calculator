@@ -44,7 +44,7 @@ func TestCalculate(t *testing.T) {
 		{"trailing closing brace", `{"operation":"add","operands":[1,2]}}`, 400, 0, "invalid_json"},
 		{"array body", `[]`, 400, 0, "invalid_json"},
 		{"trailing whitespace", "{\"operation\":\"add\",\"operands\":[1,2]}  ", 200, 3, ""},
-		{"oversize whitespace", `{"operation":"add","operands":[1,2]}` + strings.Repeat(" ", 1<<20), 400, 0, "invalid_json"},
+		{"oversize whitespace", `{"operation":"add","operands":[1,2]}` + strings.Repeat(" ", 1<<20), 413, 0, "request_too_large"},
 	}
 	srv := newTestServer()
 	for _, tt := range tests {
@@ -124,7 +124,7 @@ func TestOversizeMessagesIdentifyTheBodyLimit(t *testing.T) {
 			newTestServer().ServeHTTP(rec, req)
 			var got errorResponse
 			decode(t, rec, &got)
-			if rec.Code != 400 || got.Error.Code != "invalid_json" || got.Error.Message != "Request body exceeds the 1 MiB limit." {
+			if rec.Code != 413 || got.Error.Code != "request_too_large" || got.Error.Message != "Request body exceeds the 1 MiB limit." {
 				t.Fatalf("got %d %+v, want limit explanation", rec.Code, got)
 			}
 		}

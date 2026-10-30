@@ -26,7 +26,7 @@ type calculateResponse struct {
 func handleCalculate() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.ContentLength > maxBodyBytes {
-			writeError(w, http.StatusBadRequest, "invalid_json", bodyLimitMessage)
+			writeError(w, http.StatusRequestEntityTooLarge, "request_too_large", bodyLimitMessage)
 			return
 		}
 		var req *calculateRequest
@@ -87,7 +87,7 @@ func classify(err error) (int, string) {
 func writeDecodeError(w http.ResponseWriter, err error, fallback string) {
 	var limit *http.MaxBytesError
 	if errors.As(err, &limit) {
-		writeError(w, http.StatusBadRequest, "invalid_json", bodyLimitMessage)
+		writeError(w, http.StatusRequestEntityTooLarge, "request_too_large", bodyLimitMessage)
 		return
 	}
 	writeError(w, http.StatusBadRequest, "invalid_json", fallback)

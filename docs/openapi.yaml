@@ -1,0 +1,219 @@
+openapi: 3.1.0
+info:
+  title: Calculator API
+  version: 1.0.0
+  description: |
+    Stateless arithmetic using IEEE-754 float64. Results must be finite.
+    Request bodies are limited to 1 MiB (1,048,576 bytes), including whitespace.
+    Unknown fields, null operands, numeric strings and trailing JSON are rejected.
+    Unknown /api/ routes return 404 with the Error envelope.
+servers:
+  - url: http://localhost:8080
+    description: Local server or production container
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: Check service health
+      responses:
+        '200':
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status]
+                properties:
+                  status:
+                    const: ok
+              example: {status: ok}
+  /api/v1/calculate:
+    post:
+      operationId: calculate
+      summary: Evaluate one arithmetic operation
+      description: |
+        Square root takes one operand; all other operations take two.
+        Percentage means a percent of b: (a / 100) * b.
+        Power uses a raised to b. Non-real and overflowing results are rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateRequest'
+            examples:
+              add:
+                value: {operation: add, operands: [2, 3]}
+              subtract:
+                value: {operation: subtract, operands: [8, 3]}
+              multiply:
+                value: {operation: multiply, operands: [2, 3]}
+              divide:
+                value: {operation: divide, operands: [8, 2]}
+              power:
+                value: {operation: power, operands: [2, 3]}
+              sqrt:
+                value: {operation: sqrt, operands: [144]}
+              percentage:
+                value: {operation: percentage, operands: [15, 200]}
+      responses:
+        '200':
+          description: Raw finite result with the requested operation and operands echoed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculateResponse'
+              examples:
+                add:
+                  value: {operation: add, operands: [2, 3], result: 5}
+                subtract:
+                  value: {operation: subtract, operands: [8, 3], result: 5}
+                multiply:
+                  value: {operation: multiply, operands: [2, 3], result: 6}
+                divide:
+                  value: {operation: divide, operands: [8, 2], result: 4}
+                power:
+                  value: {operation: power, operands: [2, 3], result: 8}
+                sqrt:
+                  value: {operation: sqrt, operands: [144], result: 12}
+                percentage:
+                  value: {operation: percentage, operands: [15, 200], result: 30}
+        '400':
+          description: Invalid JSON, unknown operation or incorrect operand count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: {code: invalid_operands, message: 'wrong number of operands: add takes 2, got 1'}
+        '405':
+          description: Only POST is allowed
+          headers:
+            Allow:
+              required: true
+              schema:
+                type: string
+                const: POST
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: {code: method_not_allowed, message: use POST}
+        '413':
+          description: Request body exceeds 1 MiB
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: {code: request_too_large, message: Request body exceeds the 1 MiB limit.}
+        '422':
+          description: Division by zero, negative square root, non-real result or overflow
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                divisionByZero:
+                  value:
+                    error: {code: division_by_zero, message: division by zero}
+                negativeSqrt:
+                  value:
+                    error: {code: negative_sqrt, message: square root of a negative number}
+                nonReal:
+                  value:
+                    error: {code: result_out_of_range, message: This calculation has no real-number result.}
+                overflow:
+                  value:
+                    error: {code: result_out_of_range, message: That result is too large to show.}
+        '500':
+          description: Unexpected server failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: {code: internal_error, message: internal server error}
+components:
+  schemas:
+    Operand:
+      type: number
+      format: double
+      minimum: -1.7976931348623157e+308
+      maximum: 1.7976931348623157e+308
+      description: Finite IEEE-754 float64 JSON number
+    CalculateRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [operation, operands]
+          properties:
+            operation:
+              type: string
+              enum: [add, subtract, multiply, divide, power, percentage]
+            operands:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items:
+                $ref: '#/components/schemas/Operand'
+        - type: object
+          additionalProperties: false
+          required: [operation, operands]
+          properties:
+            operation:
+              type: string
+              const: sqrt
+            operands:
+              type: array
+              minItems: 1
+              maxItems: 1
+              items:
+                $ref: '#/components/schemas/Operand'
+    CalculateResponse:
+      type: object
+      additionalProperties: false
+      required: [operation, operands, result]
+      properties:
+        operation:
+          type: string
+          enum: [add, subtract, multiply, divide, power, sqrt, percentage]
+        operands:
+          type: array
+          items:
+            $ref: '#/components/schemas/Operand'
+        result:
+          $ref: '#/components/schemas/Operand'
+      allOf:
+        - if:
+            properties:
+              operation:
+                const: sqrt
+          then:
+            properties:
+              operands:
+                minItems: 1
+                maxItems: 1
+          else:
+            properties:
+              operands:
+                minItems: 2
+                maxItems: 2
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [invalid_json, unknown_operation, invalid_operands, method_not_allowed, request_too_large, division_by_zero, negative_sqrt, result_out_of_range, not_found, internal_error]
+            message:
+              type: string
+              minLength: 1

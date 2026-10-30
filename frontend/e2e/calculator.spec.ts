@@ -4,6 +4,21 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
+test('serves the frontend under the security policy without browser errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+  const response = await page.goto('/');
+  expect(response?.headers()['x-content-type-options']).toBe('nosniff');
+  expect(response?.headers()['content-security-policy']).toContain("default-src 'self'");
+  expect(response?.headers()['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  await expect(page.getByRole('button', { name: 'Equals', exact: true })).toBeVisible();
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveCSS('display', 'block');
+  expect(errors).toEqual([]);
+});
+
 test('calculates and chains through the real API', async ({ page }) => {
   const button = (name: string) => page.getByRole('button', { name, exact: true });
   await button('2').click();

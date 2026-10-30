@@ -103,7 +103,7 @@ check "empty body" POST "$CALC" "" 400 '.error.code == "invalid_json"'
 
 big=$(mktemp)
 python3 -c 'import sys; sys.stdout.write("{\"operation\":\"add\",\"operands\":[" + ",".join(["1"]*600000) + "]}")' >"$big"
-check "body over 1 MiB" POST "$CALC" "@$big" 400 '.error.code == "invalid_json"'
+check "body over 1 MiB" POST "$CALC" "@$big" 413 '.error.code == "request_too_large"'
 rm -f "$big"
 
 echo "## Routing"

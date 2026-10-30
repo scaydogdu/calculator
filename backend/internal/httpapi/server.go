@@ -14,6 +14,7 @@ func NewServer(logger *slog.Logger, staticDir string) http.Handler {
 	addRoutes(mux, logger, staticDir)
 	var h http.Handler = mux
 	h = withRecover(logger, h)
+	h = withSecurityHeaders(h)
 	h = withLogging(logger, h)
 	return h
 }
