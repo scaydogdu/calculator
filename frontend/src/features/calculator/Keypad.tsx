@@ -18,7 +18,7 @@ export function Keypad({ onAction, operator, overwrite, busy }: KeypadProps) {
           className={`key key-${key.kind}${key.span ? ` key-${key.span}` : ''}`}
           aria-label={key.ariaLabel}
           aria-pressed={key.action.type === 'operator' ? operator === key.action.op && overwrite : undefined}
-          disabled={busy && key.action.type !== 'clear'}
+          aria-disabled={busy && key.action.type !== 'clear' ? true : undefined}
           onClick={() => onAction(key.action)}
         >
           {key.label}

@@ -65,7 +65,7 @@ describe('keypad Calculator', () => {
     const { user } = setup(calculate);
     await user.keyboard(`2${key}3{Enter}`);
     await waitFor(() => expect(calculate).toHaveBeenCalledExactlyOnceWith(operation, [2, 3], expect.any(AbortSignal)));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Equals' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Equals' })).not.toHaveAttribute('aria-disabled'));
   });
   it('maps comma to decimal and formats float noise', async () => {
     const calculate = vi.fn().mockResolvedValue(response('add', [0.1, 0.2], 0.30000000000000004));
@@ -86,11 +86,11 @@ describe('keypad Calculator', () => {
     expect(expression()).toHaveTextContent('√9 =');
     expect(calculate).toHaveBeenCalledExactlyOnceWith('sqrt', [9], expect.any(AbortSignal));
   });
-  it('Enter evaluates instead of clicking the focused digit again', async () => {
+  it('the equals shortcut evaluates without clicking the focused digit again', async () => {
     const calculate = vi.fn().mockResolvedValue(sum);
     const { user } = setup(calculate);
     await user.click(screen.getByRole('button', { name: '2' }));
-    await user.keyboard('+3{Enter}');
+    await user.keyboard('+3=');
     await waitFor(() => expect(result()).toHaveTextContent(/^5$/));
     expect(calculate).toHaveBeenCalledExactlyOnceWith('add', [2, 3], expect.any(AbortSignal));
   });
@@ -149,7 +149,7 @@ describe('keypad Calculator', () => {
     const { user } = setup(calculate);
     await user.keyboard('2+3=');
     expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'true');
-    expect(screen.getByRole('button', { name: '2' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '2' })).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByRole('button', { name: 'All clear' })).toBeEnabled();
     await user.keyboard('9+');
     expect(result()).toHaveTextContent(/^3$/);
@@ -210,5 +210,88 @@ describe('keypad continuation', () => {
     await user.keyboard('*2=');
     await waitFor(() => expect(result()).toHaveTextContent(/^-10$/));
     expect(calculate).toHaveBeenCalledExactlyOnceWith('multiply', [-5, 2], expect.any(AbortSignal));
+  });
+});
+
+
+describe('round-2 keyboard accessibility', () => {
+  it('activates a focused digit with Enter instead of evaluating', async () => {
+    const calculate = vi.fn();
+    const { user } = setup(calculate);
+    const seven = screen.getByRole('button', { name: '7' });
+    seven.focus();
+    await user.keyboard('{Enter}');
+    expect(result()).toHaveTextContent(/^7$/);
+    expect(seven).toHaveFocus();
+    expect(calculate).not.toHaveBeenCalled();
+  });
+  it('keeps the focused Equals key focusable during a request and focused after completion', async () => {
+    let finish!: (value: CalculateResponse) => void;
+    const calculate = vi.fn().mockImplementation(() => new Promise<CalculateResponse>((resolve) => { finish = resolve; }));
+    const { user } = setup(calculate);
+    await user.keyboard('2+3');
+    const equals = screen.getByRole('button', { name: 'Equals' });
+    await user.click(equals);
+    expect(equals).toBeEnabled();
+    expect(equals).toHaveAttribute('aria-disabled', 'true');
+    expect(equals).toHaveFocus();
+    await act(async () => finish(sum));
+    expect(result()).toHaveTextContent(/^5$/);
+    expect(equals).toHaveFocus();
+    expect(equals).not.toHaveAttribute('aria-disabled');
+  });
+});
+
+describe('native keypad activation while preserving shortcuts', () => {
+  it('supports Enter and Space on operators, Equals and All clear', async () => {
+    const calculate = vi.fn().mockResolvedValue(sum);
+    const { user } = setup(calculate);
+    await user.keyboard('2');
+    screen.getByRole('button', { name: 'Add' }).focus();
+    await user.keyboard('{Enter}');
+    expect(expression()).toHaveTextContent('2 +');
+    await user.keyboard('3');
+    const equals = screen.getByRole('button', { name: 'Equals' });
+    equals.focus();
+    await user.keyboard(' ');
+    await waitFor(() => expect(result()).toHaveTextContent(/^5$/));
+    expect(equals).toHaveFocus();
+    expect(calculate).toHaveBeenCalledExactlyOnceWith('add', [2, 3], expect.any(AbortSignal));
+    screen.getByRole('button', { name: 'All clear' }).focus();
+    await user.keyboard('{Enter}');
+    expect(result()).toHaveTextContent(/^0$/);
+    screen.getByRole('button', { name: '8' }).focus();
+    await user.keyboard(' ');
+    expect(result()).toHaveTextContent(/^8$/);
+  });
+  it('ignores focused key clicks and Enter/Space while busy but lets AC abort with Enter', async () => {
+    let finish!: (value: CalculateResponse) => void;
+    const calculate = vi.fn().mockImplementation(() => new Promise<CalculateResponse>((resolve) => { finish = resolve; }));
+    const { user } = setup(calculate);
+    await user.keyboard('2+3=');
+    const eight = screen.getByRole('button', { name: '8' });
+    await user.click(eight);
+    await user.keyboard('{Enter} ');
+    expect(result()).toHaveTextContent(/^3$/);
+    expect(eight).toHaveFocus();
+    expect(calculate).toHaveBeenCalledTimes(1);
+    const clear = screen.getByRole('button', { name: 'All clear' });
+    expect(clear).not.toHaveAttribute('aria-disabled');
+    clear.focus();
+    await user.keyboard('{Enter}');
+    expect(calculate.mock.calls[0][2].aborted).toBe(true);
+    await act(async () => finish(sum));
+    expect(result()).toHaveTextContent(/^0$/);
+    expect(clear).toHaveFocus();
+  });
+  it('keeps focus after a request fails as well as after success', async () => {
+    const calculate = vi.fn().mockRejectedValue(new ApiError('division_by_zero', 'division by zero', 422));
+    const { user } = setup(calculate);
+    await user.keyboard('1/0');
+    const equals = screen.getByRole('button', { name: 'Equals' });
+    equals.focus();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent("You can't divide by zero.");
+    expect(equals).toHaveFocus();
   });
 });

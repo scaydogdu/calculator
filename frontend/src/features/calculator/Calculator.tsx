@@ -45,6 +45,7 @@ export function Calculator({ calculate = apiCalculate }: CalculatorProps) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.ctrlKey || event.metaKey) return;
+      if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof HTMLButtonElement) return;
       const action = keyboardAction(event.key);
       if (!action) return;
       event.preventDefault();

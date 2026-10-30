@@ -15,14 +15,14 @@ Operations chain from left to right through the service: `2 + 3 × 4 =` first re
 | `0`–`9` | Enter digits |
 | `.` or `,` | Decimal point |
 | `+`, `-`, `*` or `x`, `/`, `^`, `%` | Add, subtract, multiply, divide, power, percent of |
-| `Enter` or `=` | Equals |
+| `Enter` or `=` | Equals shortcut; Enter on a focused keypad button activates that button natively |
 | `Backspace` | Remove the last entered digit |
 | `Escape` or `Delete` | All clear |
 | `r` | Square root |
 
-Ctrl/Meta shortcuts are left to the browser. Keys have accessible names, the selected operator exposes `aria-pressed`, values use a live `<output>`, and errors use `role="alert"`. Keys are at least 56px tall. The card is at most 360px wide, with long values shrinking and staying on one line.
+Focused buttons activate with Enter or Space. Pending keys use `aria-disabled` and remain focusable, so the focus stays in place while the reducer ignores blocked actions. Ctrl/Meta shortcuts are left to the browser. Keys have accessible names, the selected operator exposes `aria-pressed`, values use a live `<output>`, and errors use `role="alert"`. Keys are at least 56px tall. The card is at most 360px wide, with long values shrinking and staying on one line.
 
-Screenshot capture remains pending: a saved browser permission blocks access to the local app. No browser screenshot or visual mobile/dark-mode validation is claimed for the keypad redesign.
+Independent [QA round 2](docs/qa/qa-round-2.md) verified all K1–K26 in the browser, mobile layout at 375px, light/dark contrast and console behavior for commit `19f31fd`. Its two keyboard accessibility majors are covered by regression tests and fixed in this revision. A new screenshot and a browser rerun of these latest fixes remain pending: this implementation session still has a saved permission blocking the local app.
 
 ## Prerequisites
 
@@ -187,7 +187,7 @@ The independent acceptance suite can be run against a local service or container
 bash qa/api_contract_test.sh http://localhost:8080
 ```
 
-The `qa/` directory is maintained separately by QA and may be supplied alongside this checkout. The script requires curl and jq. Both local API and container runs passed all 40 checks. Keypad reducer acceptance K1–K26 and component click/keyboard/error/abort tests are automated. Browser validation remains blocked by a saved local-browser permission; mobile, dark-mode, visual layout and screenshot checks remain unverified. See [execution record](docs/implementation-progress.md).
+The committed `qa/` directory contains the contract script, which requires curl and jq. [QA round 2](docs/qa/qa-round-2.md) records browser K1–K26, mobile/light/dark checks, the rebuilt container’s 40/40 contract results and all six README API examples. The round-1 and round-2 reports are preserved verbatim. The corrected Enter/focus behavior also has automated component regressions; see the [execution record](docs/implementation-progress.md) for current checks and the outstanding screenshot/browser rerun.
 
 ## Project structure
 
@@ -202,8 +202,9 @@ calculator/
 │   ├── coverage.md
 │   ├── prompts.md
 │   ├── implementation-progress.md
-│   ├── qa/acceptance-checklist.md
+│   ├── qa/acceptance-checklist.md, qa-round-1.md, qa-round-2.md
 │   └── superpowers/plans/2026-10-30-fullstack-calculator.md
+├── qa/api_contract_test.sh
 ├── backend/
 │   ├── go.mod
 │   ├── cmd/server/main.go, main_test.go

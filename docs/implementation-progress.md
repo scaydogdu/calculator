@@ -75,3 +75,15 @@ Keypad verification: `npm run lint`, `npm run typecheck`, `npm test` (76 passed)
 Keypad final review: independent read-only review found two important continuation defects. Both were reproduced by failing reducer/component tests (6 failures), fixed in one pass, and verified by the whole suite (83 passed). Unrounded API results are retained in the existing left field for later operators/sqrt; fresh digit/decimal entry discards that cache. Sign changes update the cached operand and selected expression while retaining result-edit protection. This keeps the state/action field contract unchanged and avoids using formatted text for subsequent arithmetic.
 
 Final keypad checks: lint/typecheck/build passed; 83 tests passed; coverage 99.2% lines, 98.01% statements, 96.93% branches. The reviewer did not judge real-browser layout/contrast/keyboard behavior or screenshots because saved browser permission still blocks the local app. No screenshot has been fabricated, and backend/API/QA files remain outside the change.
+
+## QA round 2 — 2026-10-30
+
+Read `docs/qa/qa-round-2.md` and the externally corrected Enter rule in the keypad plan. Preserved all QA-owned files byte for byte.
+
+- Major 1 RED: focused 7 + Enter left the value at 0. GREEN: document keydown leaves Enter/Space on buttons to native activation; the equals-key shortcut remains available. Updated the obsolete test that required Enter to evaluate despite focused digit input.
+- Major 2 RED: the delayed-request component test found focused Equals natively disabled. GREEN: busy keys expose aria-disabled instead of disabled, retaining focus; the reducer still rejects their actions, while AC stays active and aborts requests.
+- Added coverage for native Enter/Space on operators, digits, Equals and AC; pending click/keyboard blocking; and focus after both success and failure.
+- Minor 1: light-mode digit fill is now #f3f4f6 against the white card. Pending styling and hover/active behavior follow aria-disabled.
+- Minor 2: README now links QA round 2's actual browser/mobile/dark-mode evidence instead of claiming browser validation never occurred, and QA scripts/reports are included in the commit unchanged. A new screenshot and real-browser rerun of the keyboard fixes remain blocked by this session's saved browser permission; no screenshot is fabricated.
+
+Round-2 final verification: lint, typecheck and build passed; all 88 tests passed (including the two majors first observed failing), line coverage 99.2%, statement coverage 98.03%, branch coverage 97.05%; independent API contract Passed 40, Failed 0. SHA-256 comparison confirms backend, src/api and every QA file are unchanged. QA files are staged verbatim as explicitly requested, together with the externally supplied corrected Enter rule.

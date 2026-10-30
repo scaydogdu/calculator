@@ -1,6 +1,6 @@
 # Coverage report
 
-Measured 2026-10-30 using `make coverage` with Go 1.27.3, Node 22.23.2 and Vitest 5.0.5. All 83 frontend tests passed after the keypad redesign. Coverage is measured, not an enforced CI threshold.
+Measured 2026-10-30 using `make coverage` with Go 1.27.3, Node 22.23.2 and Vitest 5.0.5. All 88 frontend tests passed after the round-2 keyboard accessibility fixes. Coverage is measured, not an enforced CI threshold.
 
 ## Backend
 
@@ -34,29 +34,29 @@ The domain is fully covered. `main()` is not called directly because it installs
 
 ## Frontend
 
-Keypad redesign measured with `npm run coverage`: 83 tests passed, including K1–K26, component click/keyboard/error/abort coverage, raw-result continuation and sign consistency regressions.
+Round-2 accessibility fixes measured with `npm run coverage`: 88 tests passed, including K1–K26, component click/keyboard/error/abort coverage, raw-result continuation and sign consistency regressions.
 
 ```text
 % Coverage report from v8
 -------------------|---------|----------|---------|---------|-------------------
 File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
 -------------------|---------|----------|---------|---------|-------------------
-All files          |   98.01 |    96.93 |   96.55 |    99.2 |
+All files          |   98.03 |    97.05 |   96.55 |    99.2 |
  src               |       0 |      100 |       0 |       0 |
   App.tsx          |       0 |      100 |       0 |       0 | 4
- ...res/calculator |    98.5 |    96.77 |     100 |     100 |
+ ...res/calculator |   98.52 |    96.91 |     100 |     100 |
   keypadReducer.ts |   97.77 |    95.45 |     100 |     100 | 50,75,81
   operations.ts    |   83.33 |       50 |     100 |     100 | 22
 -------------------|---------|----------|---------|---------|-------------------
 
 =============================== Coverage summary ===============================
-Statements   : 98.01% ( 148/151 )
-Branches     : 96.93% ( 158/163 )
+Statements   : 98.03% ( 150/153 )
+Branches     : 97.05% ( 165/170 )
 Functions    : 96.55% ( 28/29 )
-Lines        : 99.2% ( 124/125 )
+Lines        : 99.2% ( 125/126 )
 ================================================================================
 ```
 
 All calculator feature source lines are covered; overall frontend line coverage is 99.2%. The uncovered top-level App.tsx wrapper only mounts Calculator. Remaining defensive branches include an invalid programmatic digit action, zero-sign handling in a cached result and the unknown-operation metadata guard. Main DOM bootstrap, test setup and test files are excluded. Fully covered files may be omitted from Vitest's compact text table; consult the HTML report for complete per-file details.
 
-Open `backend/coverage.html` and `frontend/coverage/index.html` after running `make coverage`. Generated reports are ignored by Git. Backend coverage above is the unchanged backend's prior measured result. Browser screenshots and mobile/dark-mode visual QA remain blocked by a saved permission for the local app; coverage does not establish visual correctness.
+Open `backend/coverage.html` and `frontend/coverage/index.html` after running `make coverage`. Generated reports are ignored by Git. Backend coverage above is the unchanged backend's prior measured result. Independent QA round 2 records browser K1–K26 and mobile/light/dark evidence for commit 19f31fd. The latest Enter/focus fixes have automated component regression coverage; a new browser rerun and screenshot remain blocked by this session's saved local-browser permission. Coverage does not establish visual correctness.
