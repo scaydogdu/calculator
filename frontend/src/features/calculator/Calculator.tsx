@@ -1,70 +1,63 @@
-import { useState, type FormEvent } from 'react';
-import { calculate as apiCalculate, type CalculateFn, type Operation } from '../../api/calculator';
-import { formatExpression } from './format';
-import { NumberField } from './NumberField';
-import { OPERATIONS, getOperation } from './operations';
+import { useCallback, useEffect, useReducer } from 'react';
+import { ApiError, calculate as apiCalculate, type CalculateFn } from '../../api/calculator';
+import { Display } from './Display';
+import { Keypad } from './Keypad';
+import { keyboardAction } from './keys';
+import { initialState, keypadReducer, type Action } from './keypadReducer';
 import { useCalculation } from './useCalculation';
-import { validateInputs, type FieldErrors } from './validation';
+
+const ERROR_COPY = new Map<string, string>([
+  ['division_by_zero', "You can't divide by zero."],
+  ['negative_sqrt', 'Square root needs a number of 0 or more.'],
+  ['result_out_of_range', 'That result is too large to show.'],
+  ['network_error', "Couldn't reach the calculator service. Try again."],
+]);
+
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) return ERROR_COPY.get(error.code) ?? (error.message || 'Something went wrong. Try again.');
+  return 'Something went wrong. Try again.';
+}
 
 interface CalculatorProps {
   calculate?: CalculateFn;
 }
 
 export function Calculator({ calculate = apiCalculate }: CalculatorProps) {
-  const [a, setA] = useState('');
-  const [b, setB] = useState('');
-  const [operation, setOperation] = useState<Operation>('add');
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const { state, run, reset } = useCalculation(calculate);
-  const { arity } = getOperation(operation);
+  const [state, dispatch] = useReducer(keypadReducer, initialState);
+  const { run, reset } = useCalculation(calculate);
+  const { pending } = state;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const validated = validateInputs(arity, a, b);
-    if (!validated.ok) {
-      setErrors(validated.errors);
-      return;
+  const send = useCallback((action: Action) => {
+    if (action.type === 'clear') reset();
+    dispatch(action);
+  }, [reset]);
+
+  useEffect(() => {
+    if (!pending) return;
+    void run(pending.operation, pending.operands).then((outcome) => {
+      // Aborted requests produce no outcome, including after AC or unmount.
+      if (!outcome) return;
+      if (outcome.status === 'success') dispatch({ type: 'resolved', result: outcome.result.result });
+      else dispatch({ type: 'failed', message: errorMessage(outcome.error) });
+    });
+  }, [pending, run]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey) return;
+      const action = keyboardAction(event.key);
+      if (!action) return;
+      event.preventDefault();
+      send(action);
     }
-    setErrors({});
-    void run(operation, validated.operands);
-  }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [send]);
 
   return (
-    <form className="calculator" onSubmit={handleSubmit} noValidate>
-      <NumberField id="a" label={arity === 1 ? 'Number' : 'First number'} value={a} onChange={setA} error={errors.a} />
-
-      <fieldset className="operations">
-        <legend>Operation</legend>
-        {OPERATIONS.map((op) => (
-          <label key={op.id} className="operation" title={op.label}>
-            <input
-              type="radio"
-              name="operation"
-              value={op.id}
-              checked={operation === op.id}
-              onChange={() => {
-                reset();
-                setErrors({});
-                setOperation(op.id);
-              }}
-              aria-label={op.label}
-            />
-            <span aria-hidden="true">{op.symbol}</span>
-          </label>
-        ))}
-      </fieldset>
-
-      {arity === 2 && <NumberField id="b" label="Second number" value={b} onChange={setB} error={errors.b} />}
-
-      <button type="submit" disabled={state.status === 'loading'}>
-        {state.status === 'loading' ? 'Calculating…' : 'Calculate'}
-      </button>
-
-      <output className="result" aria-live="polite">
-        {state.status === 'success' &&
-          formatExpression(state.result.operation, state.result.operands, state.result.result)}
-      </output>
-      {state.status === 'error' && <p role="alert" className="error">{state.message}</p>}
-    </form>
+    <section className="calculator" aria-label="Calculator" aria-busy={pending !== null}>
+      <Display expression={state.expression} entry={state.entry} error={state.error} busy={pending !== null} />
+      <Keypad onAction={send} operator={state.operator} overwrite={state.overwrite} busy={pending !== null} />
+    </section>
   );
 }

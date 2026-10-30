@@ -21,13 +21,16 @@ export function useCalculation(calculate: CalculateFn) {
       setState({ status: 'loading' });
       try {
         const result = await calculate(operation, operands, controller.signal);
-        if (!controller.signal.aborted) setState({ status: 'success', result });
+        if (controller.signal.aborted) return;
+        setState({ status: 'success', result });
+        return { status: 'success' as const, result };
       } catch (err) {
         if (controller.signal.aborted) return;
         setState({
           status: 'error',
           message: err instanceof ApiError ? err.message : 'Something went wrong. Please try again.',
         });
+        return { status: 'error' as const, error: err };
       }
     },
     [calculate],

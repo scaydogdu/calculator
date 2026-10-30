@@ -58,3 +58,20 @@ Final: Ruling: original assignment text remains unavailable; prompt record inclu
 Task 11: complete. Fresh coverage and real API examples recorded; final make test, frontend build, rebuilt Docker and container acceptance checks passed. Task 12 remains unstarted.
 
 Clean-clone verification: cloned committed repository into a temporary directory, npm ci reported zero vulnerabilities, make test passed all backend vet/race checks and 41 frontend tests, and npm run build passed. Final coverage after the regression fix is backend 92.9% statements and frontend 98.76% lines.
+
+## Keypad redesign — 2026-10-30
+
+Plan: `docs/superpowers/plans/2026-10-30-keypad-ui.md`; read-only QA source: `docs/qa/qa-round-1.md`.
+
+- Wrote reducer acceptance K1–K26 first. RED: missing keypadReducer module. Then wrote replacement component tests and a large-integer formatting regression before implementing the UI. The old form failed the keypad expectations; formatting showed 17 digits instead of the required 12.
+- GREEN: all K1–K26 passed with a pure reducer that records pending API requests and ignores non-clear input while pending. Added display, keyed grid, document keyboard map and readable component-level error copy. Reused useCalculation's abort/stale-response handling, returning a guarded outcome to the component without changing src/api.
+- Removed NumberField, validation.ts and its tests; keypad entry now enforces one decimal point, 15 digits and no leading zeros. Digit entry after success/error clears stale display context. Long values shrink and never wrap mid-number.
+- Two additional regression tests observed RED then GREEN: sign changes on scientific results retain result protection against malformed edits; unknown error codes including object-prototype names fall back to the server message.
+- All five round-1 findings are addressed in source and automated behavior tests. Browser access to the local app was rejected by a saved permission, so screenshot/mobile/dark-mode checks remain pending. No alternate browser or screenshot workaround was used.
+- Protected-file SHA-256 comparison confirms backend, src/api, qa/ and docs/qa/ are unchanged. The independent contract script passed 40/40 against the running local Go service.
+
+Keypad verification: `npm run lint`, `npm run typecheck`, `npm test` (76 passed), `npm run coverage` (99.17% lines, 97.95% statements, 96.64% branches) and `npm run build` passed. K1–K26 remain individually named acceptance tests. Contract script: Passed 40, Failed 0. Screenshot is the sole blocked documentation artifact; no screenshot is represented as captured.
+
+Keypad final review: independent read-only review found two important continuation defects. Both were reproduced by failing reducer/component tests (6 failures), fixed in one pass, and verified by the whole suite (83 passed). Unrounded API results are retained in the existing left field for later operators/sqrt; fresh digit/decimal entry discards that cache. Sign changes update the cached operand and selected expression while retaining result-edit protection. This keeps the state/action field contract unchanged and avoids using formatted text for subsequent arithmetic.
+
+Final keypad checks: lint/typecheck/build passed; 83 tests passed; coverage 99.2% lines, 98.01% statements, 96.93% branches. The reviewer did not judge real-browser layout/contrast/keyboard behavior or screenshots because saved browser permission still blocks the local app. No screenshot has been fabricated, and backend/API/QA files remain outside the change.

@@ -2,11 +2,27 @@
 
 ![CI](https://github.com/aydogdu/calculator/actions/workflows/ci.yml/badge.svg)
 
-A full-stack calculator with a Go REST service and a React + TypeScript interface. Go performs all arithmetic and mathematical validation; the frontend validates numeric input and formats results. The production image serves both layers from the same origin. GitHub publication and hosted CI have not been performed; the badge will become active after publication.
+A full-stack calculator with a Go REST service and a React + TypeScript interface. Go performs all arithmetic and mathematical validation; the frontend records keypad input and formats results. The production image serves both layers from the same origin. GitHub publication and hosted CI have not been performed; the badge will become active after publication.
 
 ## Features
 
-Addition, subtraction, multiplication, division, powers, square roots, and percentages. **Percentage means “a% of b”: `(a / 100) * b`.** The interface supports decimal/scientific notation, keyboard input, field errors, loading states, and light/dark system themes. Square root uses one input.
+Addition, subtraction, multiplication, division, powers, square roots, and percentages. **Percentage means “a% of b”: `(a / 100) * b`.** The interface has a display and a four-column keypad with digits, decimal point, `AC`, backspace, sign toggle, operators and `=`. It supports desktop keyboard input, loading states, readable errors and light/dark system themes. Entries accept at most 15 digits and one decimal point, without leading zeros. Square root evaluates the displayed number; percentages mean “a% of b”.
+
+Operations chain from left to right through the service: `2 + 3 × 4 =` first requests addition, then multiplies the returned `5` by `4` to display `20`. Entering digits after a result or error starts a fresh calculation. While a request is pending, only `AC` is active; it aborts the request and ignores any late response.
+
+| Keyboard | Action |
+|---|---|
+| `0`–`9` | Enter digits |
+| `.` or `,` | Decimal point |
+| `+`, `-`, `*` or `x`, `/`, `^`, `%` | Add, subtract, multiply, divide, power, percent of |
+| `Enter` or `=` | Equals |
+| `Backspace` | Remove the last entered digit |
+| `Escape` or `Delete` | All clear |
+| `r` | Square root |
+
+Ctrl/Meta shortcuts are left to the browser. Keys have accessible names, the selected operator exposes `aria-pressed`, values use a live `<output>`, and errors use `role="alert"`. Keys are at least 56px tall. The card is at most 360px wide, with long values shrinking and staying on one line.
+
+Screenshot capture remains pending: a saved browser permission blocks access to the local app. No browser screenshot or visual mobile/dark-mode validation is claimed for the keypad redesign.
 
 ## Prerequisites
 
@@ -171,7 +187,7 @@ The independent acceptance suite can be run against a local service or container
 bash qa/api_contract_test.sh http://localhost:8080
 ```
 
-The `qa/` directory is maintained separately by QA and may be supplied alongside this checkout. The script requires curl and jq. Both local API and container runs passed all 40 checks. Browser validation was blocked by denied local-browser permission; mobile, dark-mode, visual layout and screenshot checks remain unverified. See [execution record](docs/implementation-progress.md).
+The `qa/` directory is maintained separately by QA and may be supplied alongside this checkout. The script requires curl and jq. Both local API and container runs passed all 40 checks. Keypad reducer acceptance K1–K26 and component click/keyboard/error/abort tests are automated. Browser validation remains blocked by a saved local-browser permission; mobile, dark-mode, visual layout and screenshot checks remain unverified. See [execution record](docs/implementation-progress.md).
 
 ## Project structure
 
@@ -207,10 +223,10 @@ calculator/
         ├── api/calculator.ts, calculator.test.ts
         └── features/calculator/
             ├── operations.ts, operations.test.ts
-            ├── validation.ts, validation.test.ts
+            ├── keypadReducer.ts, keypadReducer.test.ts
+            ├── keys.ts, Keypad.tsx, Display.tsx
             ├── format.ts, format.test.ts
             ├── useCalculation.ts, useCalculation.test.tsx
-            ├── NumberField.tsx
             └── Calculator.tsx, Calculator.test.tsx
 ```
 
@@ -221,8 +237,8 @@ calculator/
 3. Every API error uses one envelope. Status 400 means a malformed request; 422 means mathematically undefined; API 404/405 responses are JSON.
 4. Strict JSON decoding rejects unknown fields, trailing data and numeric strings, and enforces a 1 MiB limit. Null numeric elements are also rejected.
 5. Non-finite results (`Inf`/`NaN`) are errors, because JSON cannot represent them.
-6. The backend returns raw float64; the frontend formats non-integer values to 12 significant digits to hide floating-point noise. Integers retain their float64 string representation.
-7. Inputs use `type="text" inputMode="decimal"` so invalid text reaches our validator and receives an explicit error.
+6. The backend returns raw float64 and the reducer retains unrounded results for later operations, including after Equals or a sign change. Formatting affects display only. The frontend formats fractional and large integer-valued results to 12 significant digits to hide floating-point noise. Integers with magnitude below 1e15 retain their normal representation.
+7. A pure keypad reducer restricts input to digits, one decimal point and at most 15 digits, with no leading zeros. The removed text fields and form validator are no longer needed: keypad input cannot contain malformed numeric text. The backend still validates every request, operand count and mathematical domain. The frontend performs no arithmetic; it records pending requests and uses returned results for chaining.
 8. No CORS is needed: Vite proxies in development and Go serves the built frontend in production.
 9. Go's standard library supplies routing, JSON and structured logging, keeping backend dependencies at zero.
 
