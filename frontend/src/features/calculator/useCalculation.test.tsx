@@ -1,45 +1,44 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError, type CalculateResponse } from '../../api/calculator';
 import { useCalculation } from './useCalculation';
 
 const sum: CalculateResponse = { operation: 'add', operands: [2, 3], result: 5 };
 
-describe('useCalculation', () => {
-  it('goes from loading to success', async () => {
+describe('useCalculation request lifetime', () => {
+  it('returns results without maintaining a duplicate UI state or rerendering', async () => {
+    let renders = 0;
     const calculate = vi.fn().mockResolvedValue(sum);
-    const { result } = renderHook(() => useCalculation(calculate));
-
-    act(() => void result.current.run('add', [2, 3]));
-    expect(result.current.state).toEqual({ status: 'loading' });
-    await waitFor(() => expect(result.current.state).toEqual({ status: 'success', result: sum }));
+    const { result } = renderHook(() => { renders += 1; return useCalculation(calculate); });
+    let outcome: unknown;
+    await act(async () => { outcome = await result.current.run('add', [2, 3]); });
+    expect(outcome).toEqual({ status: 'success', result: sum });
+    expect(renders).toBe(1);
   });
-
-  it('exposes ApiError messages and hides unexpected ones', async () => {
-    const calculate = vi.fn()
-      .mockRejectedValueOnce(new ApiError('division_by_zero', 'division by zero', 422))
-      .mockRejectedValueOnce(new Error('kaboom'));
+  it('returns errors for the component to present', async () => {
+    const error = new ApiError('division_by_zero', 'division by zero', 422);
+    const calculate = vi.fn().mockRejectedValue(error);
     const { result } = renderHook(() => useCalculation(calculate));
-
-    await act(() => result.current.run('divide', [1, 0]));
-    expect(result.current.state).toEqual({ status: 'error', message: 'division by zero' });
-
-    await act(() => result.current.run('divide', [1, 0]));
-    expect(result.current.state).toEqual({ status: 'error', message: 'Something went wrong. Please try again.' });
+    expect(await result.current.run('divide', [1, 0])).toEqual({ status: 'error', error });
   });
-
-  it('ignores a slow earlier response once a newer request was made', async () => {
-    let resolveFirst!: (r: CalculateResponse) => void;
-    const calculate = vi.fn()
-      .mockImplementationOnce(() => new Promise<CalculateResponse>((resolve) => { resolveFirst = resolve; }))
-      .mockResolvedValueOnce(sum);
+  it('suppresses the outcome of a superseded request', async () => {
+    let finish!: (value: CalculateResponse) => void;
+    const calculate = vi.fn().mockImplementationOnce(() => new Promise<CalculateResponse>((resolve) => { finish = resolve; })).mockResolvedValueOnce(sum);
     const { result } = renderHook(() => useCalculation(calculate));
-
-    act(() => void result.current.run('multiply', [9, 9]));
-    await act(() => result.current.run('add', [2, 3]));
-    await act(async () => resolveFirst({ operation: 'multiply', operands: [9, 9], result: 81 }));
-
-    expect(result.current.state).toEqual({ status: 'success', result: sum });
+    const first = result.current.run('multiply', [9, 9]);
+    expect(await result.current.run('add', [2, 3])).toEqual({ status: 'success', result: sum });
+    finish({ operation: 'multiply', operands: [9, 9], result: 81 });
+    expect(await first).toBeUndefined();
+    expect(calculate.mock.calls[0][2].aborted).toBe(true);
+  });
+  it('reset aborts pending work and suppresses a late failure', async () => {
+    let fail!: (reason: Error) => void;
+    const calculate = vi.fn().mockImplementation(() => new Promise<CalculateResponse>((_, reject) => { fail = reject; }));
+    const { result } = renderHook(() => useCalculation(calculate));
+    const pending = result.current.run('add', [2, 3]);
+    act(() => result.current.reset());
+    fail(new Error('late failure'));
+    expect(await pending).toBeUndefined();
     expect(calculate.mock.calls[0][2].aborted).toBe(true);
   });
 });

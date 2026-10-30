@@ -94,3 +94,39 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder, v any) {
 		t.Fatalf("decode response: %v", err)
 	}
 }
+
+func TestMathFailureMessagesDistinguishNonRealAndOverflow(t *testing.T) {
+	for _, test := range []struct{ body, message string }{
+		{`{"operation":"power","operands":[-8,0.5]}`, "This calculation has no real-number result."},
+		{`{"operation":"multiply","operands":[1e308,10]}`, "That result is too large to show."},
+	} {
+		rec := httptest.NewRecorder()
+		newTestServer().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/calculate", strings.NewReader(test.body)))
+		var body errorResponse
+		decode(t, rec, &body)
+		if rec.Code != 422 || body.Error.Code != "result_out_of_range" || body.Error.Message != test.message {
+			t.Fatalf("got %d %+v, want specific message %q", rec.Code, body, test.message)
+		}
+	}
+}
+
+func TestOversizeMessagesIdentifyTheBodyLimit(t *testing.T) {
+	for _, knownLength := range []bool{true, false} {
+		for _, body := range []string{
+			strings.Repeat(" ", maxBodyBytes+1) + `{"operation":"add","operands":[1,2]}`,
+			`{"operation":"add","operands":[1,2]}` + strings.Repeat(" ", maxBodyBytes+1),
+		} {
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/calculate", strings.NewReader(body))
+			if !knownLength {
+				req.ContentLength = -1
+			}
+			rec := httptest.NewRecorder()
+			newTestServer().ServeHTTP(rec, req)
+			var got errorResponse
+			decode(t, rec, &got)
+			if rec.Code != 400 || got.Error.Code != "invalid_json" || got.Error.Message != "Request body exceeds the 1 MiB limit." {
+				t.Fatalf("got %d %+v, want limit explanation", rec.Code, got)
+			}
+		}
+	}
+}

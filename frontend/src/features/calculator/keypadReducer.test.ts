@@ -177,3 +177,57 @@ describe('continuation preserves backend precision and sign', () => {
     request(state, 'add', [0.5, 1], '0.5 + 1');
   });
 });
+
+describe('unary operands inside binary expressions', () => {
+  it('resumes a sum after square root of its second operand', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt, resolved(4), equals);
+    request(state, 'add', [9, 4], '9 + 4');
+    expect(keypadReducer(state, resolved(13)).entry).toBe('13');
+  });
+  it('keeps the unrounded unary result as the second operand', () => {
+    const state = apply(digit('1'), op('add'), digit('2'), sqrt, resolved(1.4142135623730951), equals);
+    request(state, 'add', [1, 1.4142135623730951], '1 + 1.41421356237');
+  });
+  it('can chain a new operator after transforming the second operand', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt, resolved(4), op('multiply'));
+    request(state, 'add', [9, 4], '9 + 4', 'multiply');
+  });
+  it('new digits replace a unary result and backspace does not edit it', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt, resolved(4), backspace, digit('5'), equals);
+    request(state, 'add', [9, 5], '9 + 5');
+  });
+  it('updates the cached unary operand on sign changes', () => {
+    const state = apply(digit('9'), op('add'), digit('2'), sqrt, resolved(1.4142135623730951), sign, equals);
+    request(state, 'add', [9, -1.4142135623730951], '9 + -1.41421356237');
+  });
+  it('transforms a selected first operand without dropping its operator', () => {
+    const state = apply(digit('9'), op('add'), sqrt, resolved(3), digit('2'), equals);
+    request(state, 'add', [3, 2], '3 + 2');
+  });
+  it('keeps decimal zero text through sign changes', () => {
+    expect(apply(digit('0'), decimal, digit('0'), sign, digit('5')).entry).toBe('-0.05');
+    expect(apply(decimal, sign, sign, digit('5')).entry).toBe('0.5');
+  });
+});
+
+describe('unary continuation display', () => {
+  it('keeps the sum visible while the unary request is pending', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt);
+    expect(state.expression).toBe('9 + √16');
+  });
+  it('updates the operand expression after changing a resumed unary result sign', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt, resolved(4), sign);
+    expect(state.expression).toBe('9 + -4');
+  });
+});
+
+describe('replacing a resumed unary operand', () => {
+  it('removes the completed unary expression when a new digit replaces its value', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt, resolved(4), digit('5'));
+    expect(state).toMatchObject({ entry: '5', expression: '9 +' });
+  });
+  it('removes the completed unary expression when a decimal starts a replacement value', () => {
+    const state = apply(digit('9'), op('add'), ...digits('16'), sqrt, resolved(4), decimal, digit('5'));
+    expect(state).toMatchObject({ entry: '0.5', expression: '9 +' });
+  });
+});

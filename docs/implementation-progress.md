@@ -93,3 +93,24 @@ Round-2 final verification: lint, typecheck and build passed; all 88 tests passe
 The user authorized publication and explicitly selected public visibility for `scaydogdu/calculator`. Created https://github.com/scaydogdu/calculator with default branch `main`; retained the original local feature branch. README repository link and CI badge now use the authenticated owner `scaydogdu`. The initial SSH push was rejected because no accepted SSH key was available; HTTPS push succeeded using the existing GitHub CLI authentication. No credentials were committed.
 
 Pre-publication checks passed: backend go vet/race tests, frontend lint/typecheck, 88 tests and production build. Initial published commit `8a9a13dfb0c675e7252441bbd3c732eac41bf7e9` matched the remote main SHA. GitHub Actions run https://github.com/scaydogdu/calculator/actions/runs/41096597433 completed successfully: backend, frontend and Docker jobs all passed. This publication record changes documentation only. No application hosting deployment was requested.
+
+## Whole-codebase review fixes — 2026-10-30
+
+Work is isolated on codex/review-fixes. All QA-owned files are preserved.
+
+| Finding | Fix and evidence |
+|---|---|
+| 1. sqrt discards an unfinished sum | Failing component/reducer tests for 9 + 16 sqrt = now return 13. Preserve selected binary context and an unrounded unary operand; cover chaining, replacement digits, sign changes and a selected first operand. |
+| 2. malformed success response freezes UI | Failing real-client component test reproduced the unhandled null.result exception on HTTP200 HTML. Validate response shape, operation, operands and finite result before returning success; UI leaves pending and accepts a new calculation. Twelve API-boundary malformed/mismatched/overflow tests cover rejected replies. |
+| 3. percentage rounding | Failing exact tests for 7 and 29 percent of 100 pass with multiply-then-divide. A large-operand regression requires fallback scaling to avoid an intermediate overflow. Docker API returns exactly 7 and 29. |
+| 4. non-real results described as too large | Failing HTTP/UI tests now distinguish non-real from overflow in their messages. Preserve the existing 422 result_out_of_range code; typed domain errors retain errors.Is(ErrNonFinite) compatibility. |
+| 5. sign drops fractional zero text | Failing component/reducer tests preserve 0.0 -> -0.0 -> -0.05, while plain zero still stays unsigned. |
+| 6. unlimited request body duration | Real TCP test failed after a 12-second client deadline before the fix, then passed with a 10-second total read timeout. Header/write/idle budgets are 5/15/60 seconds. |
+| 7. directory listing | Failing HTTP directory test now receives 404 while direct assets/root still return 200. Verified in the rebuilt Docker image. |
+| 8. unclear over-limit error | Tests cover declared/unknown body lengths and over-limit initial/trailing reads. Preserve 400 invalid_json for the existing API/QA contract, but the message explicitly identifies the 1 MiB limit. |
+| 9. unused hook UI state | Request lifetime hook now returns guarded outcomes without duplicate state. Regression test observed an extra render before the fix and none afterward. Abort/supersession behavior remains tested. |
+| 10. unused formatExpression | Removed the form-only formatter and its obsolete tests; retained actual numeric display formatting tests. |
+
+Final checks: go vet/backend race tests, frontend lint/typecheck, all 113 frontend tests, build and coverage passed. Backend statements 90.9% (domain 100%, HTTP93.8%); frontend lines99.21%. Docker build passed, contract script Passed40/Failed0, and live hardening/numeric smoke checks passed. HTTP status/error code compatibility was retained; no 413 or new server error code was introduced. No production deployment or remote update is part of this local review-fix change.
+
+The user explicitly confirmed preserving the existing API contract when asked about 413 and separate domain codes. The implementation retains 400 invalid_json for over-limit bodies and 422 result_out_of_range for non-real/overflow results, with specific messages.

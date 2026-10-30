@@ -8,7 +8,7 @@ A full-stack calculator with a Go REST service and a React + TypeScript interfac
 
 Addition, subtraction, multiplication, division, powers, square roots, and percentages. **Percentage means “a% of b”: `(a / 100) * b`.** The interface has a display and a four-column keypad with digits, decimal point, `AC`, backspace, sign toggle, operators and `=`. It supports desktop keyboard input, loading states, readable errors and light/dark system themes. Entries accept at most 15 digits and one decimal point, without leading zeros. Square root evaluates the displayed number; percentages mean “a% of b”.
 
-Operations chain from left to right through the service: `2 + 3 × 4 =` first requests addition, then multiplies the returned `5` by `4` to display `20`. Entering digits after a result or error starts a fresh calculation. While a request is pending, only `AC` is active; it aborts the request and ignores any late response.
+Operations chain from left to right through the service: `2 + 3 × 4 =` first requests addition, then multiplies the returned `5` by `4` to display `20`. Entering digits after a result or error starts a fresh calculation. Square root also works inside an unfinished binary expression: `9 + 16 √x =` evaluates the root first, then sends `add [9, 4]` to the service and displays `13`. Unrounded unary results remain available for continuation. While a request is pending, only `AC` is active; it aborts the request and ignores any late response.
 
 | Keyboard | Action |
 |---|---|
@@ -108,7 +108,7 @@ Errors use `{"error":{"code":"...","message":"..."}}`.
 | 422 | `division_by_zero`, `negative_sqrt`, `result_out_of_range` |
 | 500 | `internal_error` |
 
-Unknown fields, numeric strings, null operand elements, non-object bodies, trailing data, out-of-float64-range JSON numbers and requests over 1 MiB are rejected. Missing/unknown operations and wrong operand counts are request errors. A well-formed calculation that is mathematically undefined is a 422 error.
+Unknown fields, numeric strings, null operand elements, non-object bodies, trailing data, out-of-float64-range JSON numbers and requests over 1 MiB are rejected. Oversized bodies retain the existing `400 invalid_json` contract and explicitly report `Request body exceeds the 1 MiB limit.` Non-real arithmetic and overflow both retain `422 result_out_of_range`, with distinct human-readable explanations. Missing/unknown operations and wrong operand counts are request errors. A well-formed calculation that is mathematically undefined is a 422 error.
 
 `GET /healthz` returns `{"status":"ok"}`.
 
@@ -245,7 +245,7 @@ calculator/
 8. No CORS is needed: Vite proxies in development and Go serves the built frontend in production.
 9. Go's standard library supplies routing, JSON and structured logging, keeping backend dependencies at zero.
 
-Arithmetic follows IEEE-754 float64 semantics; it is not arbitrary-precision decimal arithmetic. Authentication, rate limiting and calculation history are out of scope. No database is needed. The server allows up to ten seconds for graceful shutdown.
+The API client validates successful response envelopes, echoed operands and finite results; malformed proxy/server replies produce a recoverable service error rather than leaving the UI pending. Percentage evaluation multiplies before dividing to avoid extra rounding for cases such as 7% or 29% of 100, falling back to scaling first when the intermediate product overflows. Arithmetic follows IEEE-754 float64 semantics; it is not arbitrary-precision decimal arithmetic. Authentication, rate limiting and calculation history are out of scope. No database is needed. The server allows up to ten seconds for graceful shutdown. Request headers have a 5-second timeout, complete requests including the body have a 10-second timeout, writes have a 15-second timeout, and idle connections close after 60 seconds. Static files and index pages are served without directory listings.
 
 ## AI usage
 

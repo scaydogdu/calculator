@@ -68,3 +68,24 @@ func TestServesStaticFiles(t *testing.T) {
 		t.Errorf("got %d %q", rec.Code, rec.Body)
 	}
 }
+
+func TestStaticDirectoriesDoNotExposeListings(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "assets", "bundle.js"), []byte("console.log('ok')"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	srv := NewServer(slog.New(slog.NewTextHandler(io.Discard, nil)), dir)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("directory status = %d, want 404; body: %s", rec.Code, rec.Body)
+	}
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/assets/bundle.js", nil))
+	if rec.Code != http.StatusOK || rec.Body.String() != "console.log('ok')" {
+		t.Fatalf("asset status = %d, body = %s", rec.Code, rec.Body)
+	}
+}

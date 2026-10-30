@@ -37,6 +37,9 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 		Addr:              net.JoinHostPort("", port),
 		Handler:           httpapi.NewServer(logger, getenv("STATIC_DIR")),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	errCh := make(chan error, 1)

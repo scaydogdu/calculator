@@ -10,6 +10,7 @@ import (
 )
 
 const maxBodyBytes = 1 << 20
+const bodyLimitMessage = "Request body exceeds the 1 MiB limit."
 
 type calculateRequest struct {
 	Operation calculator.Operation `json:"operation"`
@@ -24,17 +25,21 @@ type calculateResponse struct {
 
 func handleCalculate() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength > maxBodyBytes {
+			writeError(w, http.StatusBadRequest, "invalid_json", bodyLimitMessage)
+			return
+		}
 		var req *calculateRequest
 		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&req); err != nil || req == nil {
-			writeError(w, http.StatusBadRequest, "invalid_json",
+			writeDecodeError(w, err,
 				`request body must be a JSON object like {"operation":"add","operands":[1,2]}`)
 			return
 		}
 
 		if err := dec.Decode(new(any)); err != io.EOF {
-			writeError(w, http.StatusBadRequest, "invalid_json", "request body must contain exactly one JSON object within 1 MiB")
+			writeDecodeError(w, err, "request body must contain exactly one JSON object")
 			return
 		}
 		operands := make([]float64, len(req.Operands))
@@ -48,7 +53,13 @@ func handleCalculate() http.Handler {
 		result, err := calculator.Calculate(req.Operation, operands)
 		if err != nil {
 			status, code := classify(err)
-			writeError(w, status, code, err.Error())
+			message := err.Error()
+			if errors.Is(err, calculator.ErrNonReal) {
+				message = "This calculation has no real-number result."
+			} else if errors.Is(err, calculator.ErrNonFinite) {
+				message = "That result is too large to show."
+			}
+			writeError(w, status, code, message)
 			return
 		}
 		writeJSON(w, http.StatusOK, calculateResponse{Operation: req.Operation, Operands: operands, Result: result})
@@ -71,4 +82,13 @@ func classify(err error) (int, string) {
 	default:
 		return http.StatusInternalServerError, "internal_error"
 	}
+}
+
+func writeDecodeError(w http.ResponseWriter, err error, fallback string) {
+	var limit *http.MaxBytesError
+	if errors.As(err, &limit) {
+		writeError(w, http.StatusBadRequest, "invalid_json", bodyLimitMessage)
+		return
+	}
+	writeError(w, http.StatusBadRequest, "invalid_json", fallback)
 }

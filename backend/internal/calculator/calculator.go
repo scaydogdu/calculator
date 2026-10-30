@@ -27,6 +27,7 @@ var (
 	ErrDivisionByZero   = errors.New("division by zero")
 	ErrNegativeSqrt     = errors.New("square root of a negative number")
 	ErrNonFinite        = errors.New("result is not a finite number")
+	ErrNonReal          = errors.New("result is not a real number")
 )
 
 type spec struct {
@@ -51,7 +52,13 @@ var operations = map[Operation]spec{
 		}
 		return math.Sqrt(x[0]), nil
 	}},
-	Percentage: {2, func(x []float64) (float64, error) { return x[0] / 100 * x[1], nil }},
+	Percentage: {2, func(x []float64) (float64, error) {
+		product := x[0] * x[1]
+		if math.IsInf(product, 0) {
+			return x[0] / 100 * x[1], nil
+		}
+		return product / 100, nil
+	}},
 }
 
 // Calculate applies op to operands. Errors wrap one of the Err* values above.
@@ -67,7 +74,10 @@ func Calculate(op Operation, operands []float64) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if math.IsNaN(result) || math.IsInf(result, 0) {
+	if math.IsNaN(result) {
+		return 0, fmt.Errorf("%w: %w", ErrNonFinite, ErrNonReal)
+	}
+	if math.IsInf(result, 0) {
 		return 0, ErrNonFinite
 	}
 	return result, nil

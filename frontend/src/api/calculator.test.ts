@@ -50,3 +50,27 @@ describe('calculate', () => {
     await expect(calculate('add', [1, 2], controller.signal)).rejects.toBe(abortError);
   });
 });
+
+describe('success response validation', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it.each([
+    null, [], {}, { result: 5 },
+    { operation: 'add', operands: [2, 3], result: '5' },
+    { operation: 'add', operands: [2, 3], result: null },
+    { operation: 'divide', operands: [2, 3], result: 5 },
+    { operation: 'add', operands: [9, 9], result: 5 },
+    { operation: 'add', operands: [2, 3, 4], result: 5 },
+    { operation: 'add', operands: [2, '3'], result: 5 },
+  ])('rejects a malformed or mismatched success envelope: %j', async (body) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(body)));
+    await expect(calculate('add', [2, 3])).rejects.toMatchObject({ code: 'invalid_response', status: 200 });
+  });
+  it('rejects successful non-JSON bodies', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<html>Proxy failure</html>', { status: 200 })));
+    await expect(calculate('add', [2, 3])).rejects.toMatchObject({ code: 'invalid_response' });
+  });
+  it('rejects a JSON number that overflows during parsing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"operation":"add","operands":[2,3],"result":1e400}', { status: 200 })));
+    await expect(calculate('add', [2, 3])).rejects.toMatchObject({ code: 'invalid_response' });
+  });
+});

@@ -89,3 +89,44 @@ func waitForReady(t *testing.T, url string) {
 	}
 	t.Fatalf("%s not ready", url)
 }
+
+func TestRunBoundsSlowRequestBodies(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	port := freePort(t)
+	done := make(chan error, 1)
+	go func() {
+		done <- run(ctx, func(key string) string {
+			if key == "PORT" {
+				return port
+			}
+			return ""
+		}, io.Discard)
+	}()
+	t.Cleanup(func() {
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(12 * time.Second):
+			t.Error("server did not stop")
+		}
+	})
+	waitForReady(t, "http://127.0.0.1:"+port+"/healthz")
+	conn, err := net.Dial("tcp", "127.0.0.1:"+port)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(12 * time.Second))
+	_, err = io.WriteString(conn, "POST /api/v1/calculate HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\nContent-Type: application/json\r\n\r\n{")
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Fatalf("server left slow body open: %v", err)
+	}
+	if !strings.Contains(string(buf[:n]), "400 Bad Request") {
+		t.Fatalf("unexpected timeout response: %s", buf[:n])
+	}
+}

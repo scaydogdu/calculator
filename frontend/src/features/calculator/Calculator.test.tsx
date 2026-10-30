@@ -111,7 +111,7 @@ describe('keypad Calculator', () => {
   it.each([
     ['division_by_zero', "You can't divide by zero."],
     ['negative_sqrt', 'Square root needs a number of 0 or more.'],
-    ['result_out_of_range', 'That result is too large to show.'],
+    ['result_out_of_range', 'A server explanation.'],
     ['network_error', "Couldn't reach the calculator service. Try again."],
     ['new_code', 'A server explanation.'],
     ['constructor', 'A server explanation.'],
@@ -293,5 +293,55 @@ describe('native keypad activation while preserving shortcuts', () => {
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('alert')).toHaveTextContent("You can't divide by zero.");
     expect(equals).toHaveFocus();
+  });
+});
+
+describe('review regressions', () => {
+  it('keeps the pending sum when applying sqrt to its second operand', async () => {
+    const calculate = vi.fn()
+      .mockResolvedValueOnce(response('sqrt', [16], 4))
+      .mockResolvedValueOnce(response('add', [9, 4], 13));
+    const { user } = setup(calculate);
+    await user.keyboard('9+16r');
+    await waitFor(() => expect(result()).toHaveTextContent(/^4$/));
+    await user.keyboard('=');
+    await waitFor(() => expect(result()).toHaveTextContent(/^13$/));
+    expect(calculate).toHaveBeenNthCalledWith(2, 'add', [9, 4], expect.any(AbortSignal));
+  });
+  it('preserves a partially typed zero decimal when toggling its sign', async () => {
+    const { user } = setup();
+    await user.keyboard('0.0');
+    await user.click(screen.getByRole('button', { name: 'Toggle sign' }));
+    await user.keyboard('5');
+    expect(result()).toHaveTextContent(/^-0.05$/);
+  });
+  it('leaves loading and remains usable after an HTML success response', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('<html>Proxy error</html>', { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(sum), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const user = userEvent.setup();
+      render(<Calculator />);
+      await user.keyboard('2+3=');
+      expect(await screen.findByRole('alert')).toHaveTextContent('The calculator service sent an invalid response. Try again.');
+      expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'false');
+      await user.keyboard('2+3=');
+      await waitFor(() => expect(result()).toHaveTextContent(/^5$/));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('mathematical domain error presentation', () => {
+  it('shows the backend non-real explanation instead of claiming overflow', async () => {
+    const calculate = vi.fn().mockRejectedValue(new ApiError('result_out_of_range', 'This calculation has no real-number result.', 422));
+    const { user } = setup(calculate);
+    await user.keyboard('8');
+    await user.click(screen.getByRole('button', { name: 'Toggle sign' }));
+    await user.keyboard('^0.5=');
+    expect(await screen.findByRole('alert')).toHaveTextContent('This calculation has no real-number result.');
+    expect(screen.getByRole('alert')).not.toHaveTextContent('too large');
   });
 });

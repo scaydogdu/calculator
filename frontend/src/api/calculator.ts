@@ -6,8 +6,15 @@ export interface CalculateResponse {
   result: number;
 }
 
-interface ErrorBody {
-  error?: { code?: string; message?: string };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isCalculateResponse(value: unknown, operation: Operation, operands: number[]): value is CalculateResponse {
+  return isRecord(value) && value.operation === operation &&
+    Array.isArray(value.operands) && value.operands.length === operands.length &&
+    value.operands.every((operand, index) => typeof operand === 'number' && Number.isFinite(operand) && operand === operands[index]) &&
+    typeof value.result === 'number' && Number.isFinite(value.result);
 }
 
 export class ApiError extends Error {
@@ -40,12 +47,15 @@ export const calculate: CalculateFn = async (operation, operands, signal) => {
 
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = (body as ErrorBody | null)?.error;
+    const error = isRecord(body) && isRecord(body.error) ? body.error : null;
     throw new ApiError(
-      error?.code ?? 'unknown_error',
-      error?.message ?? `Request failed with status ${response.status}.`,
+      typeof error?.code === 'string' ? error.code : 'unknown_error',
+      typeof error?.message === 'string' ? error.message : `Request failed with status ${response.status}.`,
       response.status,
     );
   }
-  return body as CalculateResponse;
+  if (!isCalculateResponse(body, operation, operands)) {
+    throw new ApiError('invalid_response', 'The calculator service sent an invalid response. Try again.', response.status);
+  }
+  return body;
 };

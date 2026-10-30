@@ -7,13 +7,17 @@ import { initialState, keypadReducer, type Action } from './keypadReducer';
 import { useCalculation } from './useCalculation';
 
 const ERROR_COPY = new Map<string, string>([
+  ['invalid_response', 'The calculator service sent an invalid response. Try again.'],
   ['division_by_zero', "You can't divide by zero."],
   ['negative_sqrt', 'Square root needs a number of 0 or more.'],
-  ['result_out_of_range', 'That result is too large to show.'],
   ['network_error', "Couldn't reach the calculator service. Try again."],
 ]);
 
 function errorMessage(error: unknown): string {
+  if (error instanceof ApiError && error.code === 'result_out_of_range') {
+    return error.message && error.message !== 'result is not a finite number'
+      ? error.message : 'This calculation has no finite real result.';
+  }
   if (error instanceof ApiError) return ERROR_COPY.get(error.code) ?? (error.message || 'Something went wrong. Try again.');
   return 'Something went wrong. Try again.';
 }

@@ -3,6 +3,8 @@ package httpapi
 import (
 	"log/slog"
 	"net/http"
+	"os"
+	"path"
 )
 
 func addRoutes(mux *http.ServeMux, logger *slog.Logger, staticDir string) {
@@ -12,7 +14,7 @@ func addRoutes(mux *http.ServeMux, logger *slog.Logger, staticDir string) {
 	mux.Handle("/api/", handleNotFound())
 	if staticDir != "" {
 		logger.Info("serving static files", "dir", staticDir)
-		mux.Handle("/", http.FileServer(http.Dir(staticDir)))
+		mux.Handle("/", http.FileServer(noDirectoryListing{http.Dir(staticDir)}))
 	}
 }
 
@@ -33,4 +35,33 @@ func handleNotFound() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, "not_found", "no such endpoint")
 	})
+}
+
+// noDirectoryListing serves directory index pages without exposing file inventories.
+type noDirectoryListing struct{ http.FileSystem }
+
+func (fs noDirectoryListing) Open(name string) (http.File, error) {
+	f, err := fs.FileSystem.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	if info.IsDir() {
+		index, err := fs.FileSystem.Open(path.Join(name, "index.html"))
+		if err != nil {
+			f.Close()
+			return nil, os.ErrNotExist
+		}
+		indexInfo, err := index.Stat()
+		index.Close()
+		if err != nil || indexInfo.IsDir() {
+			f.Close()
+			return nil, os.ErrNotExist
+		}
+	}
+	return f, nil
 }
