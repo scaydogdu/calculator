@@ -1,4 +1,5 @@
 import { StrictMode } from 'react';
+import { onlineManager } from '@tanstack/react-query';
 import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { createQueryWrapper } from '../../test/query';
@@ -19,6 +20,25 @@ function setup(calculate: CalculateFn = vi.fn().mockResolvedValue(sum)) {
 }
 
 describe('keypad Calculator', () => {
+  it('shows paused connectivity and lets AC cancel an offline query', async () => {
+    onlineManager.setOnline(false);
+    try {
+      const calculate = vi.fn().mockResolvedValue(sum);
+      const { user } = setup(calculate);
+      await user.keyboard('2+3=');
+      expect(screen.getByText('Waiting for connection…')).toBeInTheDocument();
+      expect(calculate).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('button', { name: 'All clear' }));
+      act(() => onlineManager.setOnline(true));
+      expect(result()).toHaveTextContent(/^0$/);
+      expect(calculate).not.toHaveBeenCalled();
+      await user.keyboard('2+3=');
+      await waitFor(() => expect(result()).toHaveTextContent(/^5$/));
+      expect(calculate).toHaveBeenCalledOnce();
+    } finally {
+      act(() => onlineManager.setOnline(true));
+    }
+  });
   it('renders the accessible keypad and starts at zero without a request', () => {
     const calculate = vi.fn();
     setup(calculate);
@@ -239,7 +259,7 @@ describe('round-2 keyboard accessibility', () => {
     expect(equals).toHaveAttribute('aria-disabled', 'true');
     expect(equals).toHaveFocus();
     await act(async () => finish(sum));
-    expect(result()).toHaveTextContent(/^5$/);
+    await waitFor(() => expect(result()).toHaveTextContent(/^5$/));
     expect(equals).toHaveFocus();
     expect(equals).not.toHaveAttribute('aria-disabled');
   });
@@ -364,11 +384,11 @@ describe('request timeout recovery', () => {
       enter();
       await act(async () => { await vi.advanceTimersByTimeAsync(19_999); });
       expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'true');
-      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(2); });
       expect(screen.getByRole('alert')).toHaveTextContent('The calculator service took too long. Try again.');
       expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'false');
       expect(calculate.mock.calls[0][2].aborted).toBe(true);
-      await act(async () => { enter(); });
+      await act(async () => { enter(); await vi.advanceTimersByTimeAsync(1); });
       expect(result()).toHaveTextContent(/^5$/);
       await act(async () => {
         if (lateOutcome === 'success') finish(response('add', [2, 3], 999));
@@ -388,7 +408,7 @@ describe('request timeout recovery', () => {
       await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
       expect(result()).toHaveTextContent(/^0$/);
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      expect(vi.getTimerCount()).toBe(0);
+      expect(screen.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'false');
     } finally { vi.useRealTimers(); }
   });
 });

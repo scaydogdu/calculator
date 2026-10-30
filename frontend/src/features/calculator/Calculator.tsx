@@ -28,23 +28,20 @@ interface CalculatorProps {
 
 export function Calculator({ calculate = apiCalculate }: CalculatorProps) {
   const [state, dispatch] = useReducer(keypadReducer, initialState);
-  const { run, reset } = useCalculation(calculate);
   const { pending } = state;
+  const calculation = useCalculation(pending, calculate);
 
   const send = useCallback((action: Action) => {
-    if (action.type === 'clear') reset();
     dispatch(action);
-  }, [reset]);
+  }, []);
 
   useEffect(() => {
     if (!pending) return;
-    void run(pending.operation, pending.operands).then((outcome) => {
-      // Aborted requests produce no outcome, including after AC or unmount.
-      if (!outcome) return;
-      if (outcome.status === 'success') dispatch({ type: 'resolved', result: outcome.result.result });
-      else dispatch({ type: 'failed', message: errorMessage(outcome.error) });
-    });
-  }, [pending, run]);
+    if (calculation.isSuccess) dispatch({ type: 'resolved', result: calculation.data.result });
+    else if (calculation.isError && calculation.fetchStatus === 'idle') {
+      dispatch({ type: 'failed', message: errorMessage(calculation.error) });
+    }
+  }, [pending, calculation.data, calculation.error, calculation.isSuccess, calculation.isError, calculation.fetchStatus]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -61,7 +58,7 @@ export function Calculator({ calculate = apiCalculate }: CalculatorProps) {
 
   return (
     <section className="calculator" aria-label="Calculator" aria-busy={pending !== null}>
-      <Display expression={state.expression} entry={state.entry} error={state.error} busy={pending !== null} />
+      <Display expression={state.expression} entry={state.entry} error={state.error} busy={pending !== null} paused={calculation.isPaused} />
       <Keypad onAction={send} operator={state.operator} overwrite={state.overwrite} busy={pending !== null} />
     </section>
   );

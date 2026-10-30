@@ -82,9 +82,9 @@ CI runs Go vet, Staticcheck, govulncheck, race tests, frontend lint/type checkin
 ## Design decisions
 
 - A pure reducer owns keypad input and left-to-right chaining: `2 + 3 × 4 =` gives `20`. Unrounded backend results are retained for subsequent operations; display formatting uses 12 significant digits for fractional or large values.
-- TanStack Query mutations coordinate requests without retries or offline queuing. A transport helper enforces a 20-second deadline. AC and unmount abort requests; cancelled or superseded responses cannot update the display.
+- TanStack Query `useQuery` keys calculations by operation and operands. Deterministic results stay fresh and are reused until the default five-minute inactive-cache expiry. Query cancels unused requests on AC, changed inputs or unmount; the transport consumes its signal and adds a 20-second deadline per attempt. Network/5xx failures retry once; domain errors, invalid replies and timeouts do not. Offline requests pause until connectivity returns or AC clears them.
 - IEEE-754 float64 is used throughout. Non-real and non-finite results are rejected; this is not arbitrary-precision decimal arithmetic.
-- Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending.
+- Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending. Long numbers shrink to fit narrow displays, keeping every typed digit visible without horizontal scrolling.
 - Go uses the standard library for routing, JSON and logging. The minimum version and container build use the patched Go 1.27.3 release. It bounds request bodies and read/write/idle time, shuts down gracefully, and disables directory listings.
 - Production responses include `nosniff`, a same-origin Content Security Policy and `strict-origin-when-cross-origin` referrer policy. Development uses Vite's separate server.
 

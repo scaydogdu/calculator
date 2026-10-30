@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Route } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -57,3 +57,74 @@ test('keeps keyboard focus through a request and clears with Enter', async ({ pa
   await expect(page.getByRole('status', { name: 'Result' })).toHaveText('0');
   await expect(page.getByLabel('Expression')).toBeEmpty();
 });
+
+test('reuses cached results but distinguishes operand keys', async ({ page }) => {
+  const requests: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/v1/calculate') && request.method() === 'POST') requests.push(request.postDataJSON());
+  });
+  for (const expression of ['2+3=', '2+3=', '3+2=']) {
+    await page.getByRole('button', { name: 'All clear' }).click();
+    await page.keyboard.type(expression);
+    await expect(page.getByRole('status', { name: 'Result' })).toHaveText('5');
+  }
+  expect(requests).toEqual([
+    { operation: 'add', operands: [2, 3] },
+    { operation: 'add', operands: [3, 2] },
+  ]);
+});
+
+test('AC cancels the query and a late response cannot poison its cache', async ({ page }) => {
+  let delayedRoute: Route | undefined;
+  let requests = 0;
+  await page.route('**/api/v1/calculate', async (route) => {
+    requests += 1;
+    if (requests === 1) {
+      delayedRoute = route;
+      return;
+    }
+    await route.continue();
+  });
+  await page.keyboard.type('2+3=');
+  await expect.poll(() => delayedRoute !== undefined).toBe(true);
+  const cancelled = page.waitForEvent('requestfailed', {
+    predicate: (request) => request.url().endsWith('/api/v1/calculate'),
+  });
+  await page.getByRole('button', { name: 'All clear' }).click();
+  await cancelled;
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('0');
+  // Fulfilment may reject because Query already aborted the browser request.
+  await delayedRoute!.fulfill({ json: { operation: 'add', operands: [2, 3], result: 999 } }).catch(() => {});
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.getByRole('button', { name: 'All clear' }).click();
+    await page.keyboard.type('2+3=');
+    await expect(page.getByRole('status', { name: 'Result' })).toHaveText('5');
+  }
+  expect(requests).toBe(2);
+});
+
+for (const width of [320, 375]) {
+  test(`fits long negative numbers without clipping at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 });
+    const result = page.getByRole('status', { name: 'Result' });
+    await page.keyboard.type('12345678901234');
+    await page.getByRole('button', { name: 'Toggle sign' }).click();
+    await page.keyboard.type('5');
+    await expect(result).toHaveText('-123456789012345');
+    const fits = () => result.evaluate((element) => {
+      const range = element.ownerDocument.createRange();
+      range.selectNodeContents(element);
+      const text = range.getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      return element.scrollWidth <= element.clientWidth && text.left >= box.left - 1 && text.right <= box.right + 1;
+    });
+    expect(await fits()).toBe(true);
+    await page.getByRole('button', { name: 'All clear' }).click();
+    await page.keyboard.type('0.12345678901234');
+    await page.getByRole('button', { name: 'Toggle sign' }).click();
+    await expect(result).toHaveText('-0.12345678901234');
+    expect(await fits()).toBe(true);
+    await page.setViewportSize({ width: 768, height: 812 });
+    expect(await fits()).toBe(true);
+  });
+}

@@ -7,9 +7,10 @@ export async function calculateWithDeadline(
   calculate: CalculateFn,
   operation: Operation,
   operands: number[],
-  controller: AbortController,
+  querySignal: AbortSignal,
 ) {
-  const { signal } = controller;
+  const deadline = new AbortController();
+  const signal = AbortSignal.any([querySignal, deadline.signal]);
   signal.throwIfAborted();
   let onAbort!: () => void;
   const interrupted = new Promise<never>((_, reject) => {
@@ -17,7 +18,7 @@ export async function calculateWithDeadline(
     signal.addEventListener('abort', onAbort, { once: true });
   });
   const timer = setTimeout(() => {
-    controller.abort(new ApiError('request_timeout', 'The calculator service took too long. Try again.', 0));
+    deadline.abort(new ApiError('request_timeout', 'The calculator service took too long. Try again.', 0));
   }, REQUEST_TIMEOUT_MS);
   try {
     return await Promise.race([calculate(operation, operands, signal), interrupted]);
