@@ -6,7 +6,7 @@ A Go REST API with a React + TypeScript calculator. The backend performs arithme
 
 ## Setup and run
 
-Requirements: Go 1.27+, Node.js 22.12 or newer, and npm. `.nvmrc` selects the Node 22.23.2 version used by CI and Docker; Node 24 is also supported.
+Requirements: Go 1.27.3+, Node.js 22.12 or newer, and npm. `.nvmrc` selects the Node 22.23.2 version used by CI and Docker; Node 24 is also supported.
 
 From the repository root, start the API:
 
@@ -85,7 +85,7 @@ CI runs Go vet, Staticcheck, govulncheck, race tests, frontend lint/type checkin
 - TanStack Query mutations coordinate requests without retries or offline queuing. A transport helper enforces a 20-second deadline. AC and unmount abort requests; cancelled or superseded responses cannot update the display.
 - IEEE-754 float64 is used throughout. Non-real and non-finite results are rejected; this is not arbitrary-precision decimal arithmetic.
 - Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending.
-- Go uses the standard library for routing, JSON and logging. It bounds request bodies and read/write/idle time, shuts down gracefully, and disables directory listings.
+- Go uses the standard library for routing, JSON and logging. The minimum version and container build use the patched Go 1.27.3 release. It bounds request bodies and read/write/idle time, shuts down gracefully, and disables directory listings.
 - Production responses include `nosniff`, a same-origin Content Security Policy and `strict-origin-when-cross-origin` referrer policy. Development uses Vite's separate server.
 
 Historical verification records and screenshots are in [docs/qa](docs/qa/README.md). AI usage is documented in [docs/prompts.md](docs/prompts.md).
