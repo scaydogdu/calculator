@@ -25,3 +25,5 @@ Task 7: RED verified; tests fail on missing feature modules.
 Task 7: complete. Planned tests observed RED then GREEN; all frontend tests and typecheck pass.
 Task 8: RED verified; tests fail on missing feature modules.
 Task 8: complete. Planned tests observed RED then GREEN; all frontend tests and typecheck pass.
+Task 8 verification limitation: local browser access was denied by browser permission policy; no browser screenshots or mobile/dark-mode checks were performed. Automated component tests, lint, typecheck and build pass. Independent QA API script passes 40/40 locally.
+Task 9: complete. Docker build succeeded; container / returned 200 and power 2^10 returned 1024; independent API script 40 passed, 0 failed. User nonroot:nonroot; image 8,646,106 bytes; docker stop completed in 0.123 seconds. Host port 18080 used to avoid the local API on 8080. Docker Desktop started successfully after initial startup delay.
