@@ -1,8 +1,8 @@
 # Calculator
 
-![CI](https://github.com/aydogdu/calculator/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/scaydogdu/calculator/actions/workflows/ci.yml/badge.svg)
 
-A full-stack calculator with a Go REST service and a React + TypeScript interface. Go performs all arithmetic and mathematical validation; the frontend records keypad input and formats results. The production image serves both layers from the same origin. GitHub publication and hosted CI have not been performed; the badge will become active after publication.
+A full-stack calculator with a Go REST service and a React + TypeScript interface. Go performs all arithmetic and mathematical validation; the frontend records keypad input and formats results. The production image serves both layers from the same origin. Source code is available at [scaydogdu/calculator](https://github.com/scaydogdu/calculator); the badge above shows the GitHub Actions CI status.
 
 ## Features
 
