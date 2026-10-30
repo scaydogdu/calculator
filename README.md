@@ -22,7 +22,9 @@ Operations chain from left to right through the service: `2 + 3 × 4 =` first re
 
 Focused buttons activate with Enter or Space. Pending keys use `aria-disabled` and remain focusable, so the focus stays in place while the reducer ignores blocked actions. Ctrl/Meta shortcuts are left to the browser. Keys have accessible names, the selected operator exposes `aria-pressed`, values use a live `<output>`, and errors use `role="alert"`. Keys are at least 56px tall. The card is at most 360px wide, with long values shrinking and staying on one line.
 
-Independent [QA round 2](docs/qa/qa-round-2.md) verified all K1–K26 in the browser, mobile layout at 375px, light/dark contrast and console behavior for commit `19f31fd`. Its two keyboard accessibility majors are covered by regression tests and fixed in this revision. A new screenshot and a browser rerun of these latest fixes remain pending: this implementation session still has a saved permission blocking the local app.
+Independent [QA round 2](docs/qa/qa-round-2.md) verified all K1–K26 in the browser, mobile layout at 375px, light/dark contrast and console behavior for commit `19f31fd`. Its two keyboard accessibility majors are covered by regression tests and fixed in this revision. [QA round 3](docs/qa/qa-round-3.md) verified the Enter/focus fixes and regression scenarios in the rebuilt container, with no remaining findings.
+
+![Calculator keypad in desktop light mode](docs/qa/screenshots/desktop-light.jpg)
 
 ## Prerequisites
 
@@ -187,7 +189,7 @@ The independent acceptance suite can be run against a local service or container
 bash qa/api_contract_test.sh http://localhost:8080
 ```
 
-The committed `qa/` directory contains the contract script, which requires curl and jq. [QA round 2](docs/qa/qa-round-2.md) records browser K1–K26, mobile/light/dark checks, the rebuilt container’s 40/40 contract results and all six README API examples. The round-1 and round-2 reports are preserved verbatim. The corrected Enter/focus behavior also has automated component regressions; see the [execution record](docs/implementation-progress.md) for current checks and the outstanding screenshot/browser rerun.
+The committed `qa/` directory contains the contract script, which requires curl and jq. [QA round 2](docs/qa/qa-round-2.md) records browser K1–K26, mobile/light/dark checks, the rebuilt container’s 40/40 contract results and all six README API examples. The QA reports are preserved verbatim. [QA round 3](docs/qa/qa-round-3.md) records the completed browser rerun, desktop/mobile screenshots and successful verification of all round-2 fixes. The corrected Enter/focus behavior also has automated component regressions; see the [execution record](docs/implementation-progress.md) for implementation history.
 
 ## Project structure
 
