@@ -10,3 +10,6 @@ Ruling: Original assignment prompt is not available in the supplied files; promp
 Docker daemon is currently stopped. No GitHub publication is authorized; Task 12 remains pending.
 
 Task 1: complete. Domain tests observed failing on missing Operation, then passing with 100% coverage.
+
+Task 2 Ruling: GET / conflicts with methodless /api/ in ServeMux (reproduced panic in TestServesStaticFiles); use methodless root handler and enforce GET/HEAD inside static handling. Cost if wrong: root method handling requires explicit tests.
+Task 2: complete. HTTP tests observed failing before implementation; all domain and HTTP tests now pass under race detection.
