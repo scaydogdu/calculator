@@ -21,3 +21,5 @@ Task 5: RED verified; tests fail on missing feature modules.
 Task 5: complete. Planned tests observed RED then GREEN; all frontend tests and typecheck pass.
 Task 6: RED verified; tests fail on missing feature modules.
 Task 6: complete. Planned tests observed RED then GREEN; all frontend tests and typecheck pass.
+Task 7: RED verified; tests fail on missing feature modules.
+Task 7: complete. Planned tests observed RED then GREEN; all frontend tests and typecheck pass.
