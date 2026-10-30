@@ -26,7 +26,7 @@ var (
 	ErrOperandCount     = errors.New("wrong number of operands")
 	ErrDivisionByZero   = errors.New("division by zero")
 	ErrNegativeSqrt     = errors.New("square root of a negative number")
-	ErrNonFinite        = errors.New("result is not a finite number")
+	ErrOverflow         = errors.New("result exceeds the float64 range")
 	ErrNonReal          = errors.New("result is not a real number")
 )
 
@@ -45,7 +45,12 @@ var operations = map[Operation]spec{
 		}
 		return x[0] / x[1], nil
 	}},
-	Power: {2, func(x []float64) (float64, error) { return math.Pow(x[0], x[1]), nil }},
+	Power: {2, func(x []float64) (float64, error) {
+		if x[0] == 0 && x[1] < 0 {
+			return 0, ErrDivisionByZero
+		}
+		return math.Pow(x[0], x[1]), nil
+	}},
 	Sqrt: {1, func(x []float64) (float64, error) {
 		if x[0] < 0 {
 			return 0, ErrNegativeSqrt
@@ -53,6 +58,8 @@ var operations = map[Operation]spec{
 		return math.Sqrt(x[0]), nil
 	}},
 	Percentage: {2, func(x []float64) (float64, error) {
+		// Multiplying first avoids premature underflow; scale first only
+		// when the intermediate product would overflow.
 		product := x[0] * x[1]
 		if math.IsInf(product, 0) {
 			return x[0] / 100 * x[1], nil
@@ -75,10 +82,10 @@ func Calculate(op Operation, operands []float64) (float64, error) {
 		return 0, err
 	}
 	if math.IsNaN(result) {
-		return 0, fmt.Errorf("%w: %w", ErrNonFinite, ErrNonReal)
+		return 0, ErrNonReal
 	}
 	if math.IsInf(result, 0) {
-		return 0, ErrNonFinite
+		return 0, ErrOverflow
 	}
 	return result, nil
 }

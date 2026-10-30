@@ -56,7 +56,7 @@ curl http://localhost:8080/api/v1/calculate \
 
 Supported operations: `add`, `subtract`, `multiply`, `divide`, `power`, `sqrt`, and `percentage`. Square root takes one operand; the others take two. Percentage means **a% of b**, `(a / 100) * b`.
 
-Errors use `{"error":{"code":"...","message":"..."}}`: 400 for invalid requests, 404 for unknown API routes, 405 for unsupported calculation methods, **413 `request_too_large` for bodies over 1 MiB**, 422 for mathematical domain errors or overflow, and 500 for unexpected failures. Unknown fields, null operands, numeric strings and trailing JSON are rejected.
+Errors use `{"error":{"code":"...","message":"..."}}`: 400 for invalid requests, 404 for unknown API routes, 405 for unsupported calculation methods, **413 `request_too_large` for bodies over 1 MiB**, 422 for `division_by_zero`, `negative_sqrt`, `non_real_result` or `result_overflow`, and 500 for unexpected failures. Unknown fields, null operands, numeric strings and trailing JSON are rejected.
 
 ## Tests and checks
 
@@ -81,11 +81,11 @@ CI runs Go vet, Staticcheck, govulncheck, race tests, frontend lint/type checkin
 
 ## Design decisions
 
-- A pure reducer owns keypad input and left-to-right chaining: `2 + 3 × 4 =` gives `20`. Unrounded backend results are retained for subsequent operations; display formatting uses 12 significant digits for fractional or large values.
-- TanStack Query `useQuery` keys calculations by operation and operands. Deterministic results stay fresh and are reused until the default five-minute inactive-cache expiry. Query cancels unused requests on AC, changed inputs or unmount; the transport consumes its signal and adds a 20-second deadline per attempt. Network/5xx failures retry once; domain errors, invalid replies and timeouts do not. Offline requests pause until connectivity returns or AC clears them.
+- A pure reducer owns keypad input and left-to-right chaining: `2 + 3 × 4 =` gives `20`. Unrounded backend results are retained for subsequent operations; fractional or large results use 12 significant digits. Rounded whole-number digits are shown in scientific notation, for example `-1.76366841446e+13`; exact integers below 1e15 retain all their digits.
+- Input events call one controller hook directly. It applies pure keypad transitions and sends each submitted calculation to the backend using native `fetch`, without caching or automatic retries. One request controller enforces a 20-second deadline, aborts on AC/unmount and ignores late replies. Offline requests fail instead of being queued.
 - IEEE-754 float64 is used throughout. Non-real and non-finite results are rejected; this is not arbitrary-precision decimal arithmetic.
 - Buttons support keyboard activation and retain focus while busy. Digits, operators, Enter/`=`, Backspace, Escape/Delete and `r` (square root) have shortcuts. Only AC is active while a request is pending. Long numbers shrink to fit narrow displays, keeping every typed digit visible without horizontal scrolling.
 - Go uses the standard library for routing, JSON and logging. The minimum version and container build use the patched Go 1.27.3 release. It bounds request bodies and read/write/idle time, shuts down gracefully, and disables directory listings.
 - Production responses include `nosniff`, a same-origin Content Security Policy and `strict-origin-when-cross-origin` referrer policy. Development uses Vite's separate server.
 
-Historical verification records and screenshots are in [docs/qa](docs/qa/README.md). AI usage is documented in [docs/prompts.md](docs/prompts.md).
+AI usage and links to the historical development records are in [docs/prompts.md](docs/prompts.md).

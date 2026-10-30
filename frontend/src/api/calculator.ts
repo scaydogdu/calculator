@@ -10,13 +10,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isCalculateResponse(value: unknown, operation: Operation, operands: number[]): value is CalculateResponse {
-  return isRecord(value) && value.operation === operation &&
-    Array.isArray(value.operands) && value.operands.length === operands.length &&
-    value.operands.every((operand, index) => typeof operand === 'number' && Number.isFinite(operand) && operand === operands[index]) &&
-    typeof value.result === 'number' && Number.isFinite(value.result);
-}
-
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
@@ -54,8 +47,8 @@ export const calculate: CalculateFn = async (operation, operands, signal) => {
       response.status,
     );
   }
-  if (!isCalculateResponse(body, operation, operands)) {
+  if (!isRecord(body) || typeof body.result !== 'number' || !Number.isFinite(body.result)) {
     throw new ApiError('invalid_response', 'The calculator service sent an invalid response. Try again.', response.status);
   }
-  return body;
+  return { operation, operands, result: body.result };
 };

@@ -27,13 +27,13 @@ func handleHealth() http.Handler {
 func handleMethodNotAllowed(allow string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Allow", allow)
-		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "use "+allow)
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method must be "+allow+".")
 	})
 }
 
 func handleNotFound() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		writeError(w, http.StatusNotFound, "not_found", "no such endpoint")
+		writeError(w, http.StatusNotFound, "not_found", "No such endpoint.")
 	})
 }
 

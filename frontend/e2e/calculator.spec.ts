@@ -58,7 +58,7 @@ test('keeps keyboard focus through a request and clears with Enter', async ({ pa
   await expect(page.getByLabel('Expression')).toBeEmpty();
 });
 
-test('reuses cached results but distinguishes operand keys', async ({ page }) => {
+test('sends every submitted calculation to the backend', async ({ page }) => {
   const requests: unknown[] = [];
   page.on('request', (request) => {
     if (request.url().endsWith('/api/v1/calculate') && request.method() === 'POST') requests.push(request.postDataJSON());
@@ -70,11 +70,12 @@ test('reuses cached results but distinguishes operand keys', async ({ page }) =>
   }
   expect(requests).toEqual([
     { operation: 'add', operands: [2, 3] },
+    { operation: 'add', operands: [2, 3] },
     { operation: 'add', operands: [3, 2] },
   ]);
 });
 
-test('AC cancels the query and a late response cannot poison its cache', async ({ page }) => {
+test('AC cancels a request and ignores a late reply', async ({ page }) => {
   let delayedRoute: Route | undefined;
   let requests = 0;
   await page.route('**/api/v1/calculate', async (route) => {
@@ -93,14 +94,14 @@ test('AC cancels the query and a late response cannot poison its cache', async (
   await page.getByRole('button', { name: 'All clear' }).click();
   await cancelled;
   await expect(page.getByRole('status', { name: 'Result' })).toHaveText('0');
-  // Fulfilment may reject because Query already aborted the browser request.
+  // Fulfilment may reject because AC already aborted the browser request.
   await delayedRoute!.fulfill({ json: { operation: 'add', operands: [2, 3], result: 999 } }).catch(() => {});
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await page.getByRole('button', { name: 'All clear' }).click();
     await page.keyboard.type('2+3=');
     await expect(page.getByRole('status', { name: 'Result' })).toHaveText('5');
   }
-  expect(requests).toBe(2);
+  expect(requests).toBe(3);
 });
 
 for (const width of [320, 375]) {
@@ -128,3 +129,40 @@ for (const width of [320, 375]) {
     expect(await fits()).toBe(true);
   });
 }
+
+
+test('shows rounded large results in scientific notation and retains raw precision', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.keyboard.type('123456789012345');
+  await page.getByRole('button', { name: 'Toggle sign' }).click();
+  await page.keyboard.type('/7=');
+  const result = page.getByRole('status', { name: 'Result' });
+  await expect(result).toHaveText('-1.76366841446e+13');
+  expect(await result.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.keyboard.type('*7=');
+  await expect(result).toHaveText('-123456789012345');
+});
+
+test('fails promptly offline and recovers on a new submission', async ({ page, context }) => {
+  await context.setOffline(true);
+  await page.keyboard.type('2+3=');
+  await expect(page.getByRole('alert')).toHaveText("Couldn't reach the calculator service. Try again.");
+  await expect(page.getByRole('region', { name: 'Calculator' })).toHaveAttribute('aria-busy', 'false');
+  await context.setOffline(false);
+  await page.keyboard.type('2+3=');
+  await expect(page.getByRole('status', { name: 'Result' })).toHaveText('5');
+});
+
+test('distinguishes non-real, overflowing and zero-power domain errors', async ({ page }) => {
+  const alert = page.getByRole('alert');
+  await page.keyboard.type('8');
+  await page.getByRole('button', { name: 'Toggle sign' }).click();
+  await page.keyboard.type('^0.5=');
+  await expect(alert).toHaveText('This calculation has no real-number result.');
+  await page.keyboard.type('2^1024=');
+  await expect(alert).toHaveText('That result is too large to show.');
+  await page.keyboard.type('0^1');
+  await page.getByRole('button', { name: 'Toggle sign' }).click();
+  await page.keyboard.type('=');
+  await expect(alert).toHaveText("You can't divide by zero.");
+});

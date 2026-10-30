@@ -28,7 +28,7 @@ func TestCalculate(t *testing.T) {
 		{"percentage", `{"operation":"percentage","operands":[15,200]}`, 200, 30, ""},
 		{"division by zero", `{"operation":"divide","operands":[1,0]}`, 422, 0, "division_by_zero"},
 		{"negative sqrt", `{"operation":"sqrt","operands":[-4]}`, 422, 0, "negative_sqrt"},
-		{"overflow", `{"operation":"multiply","operands":[1e308,10]}`, 422, 0, "result_out_of_range"},
+		{"overflow", `{"operation":"multiply","operands":[1e308,10]}`, 422, 0, "result_overflow"},
 		{"unknown operation", `{"operation":"modulo","operands":[1,2]}`, 400, 0, "unknown_operation"},
 		{"missing operation", `{"operands":[1,2]}`, 400, 0, "unknown_operation"},
 		{"wrong arity", `{"operation":"add","operands":[1]}`, 400, 0, "invalid_operands"},
@@ -37,7 +37,7 @@ func TestCalculate(t *testing.T) {
 		{"empty body", ``, 400, 0, "invalid_json"},
 		{"string operand", `{"operation":"add","operands":["1",2]}`, 400, 0, "invalid_json"},
 		{"number out of float64 range", `{"operation":"add","operands":[1e400,2]}`, 400, 0, "invalid_json"},
-		{"unknown field", `{"operation":"add","operands":[1,2],"extra":true}`, 400, 0, "invalid_json"},
+		{"unknown field", `{"operation":"add","operands":[1,2],"extra":true}`, 400, 0, "unknown_field"},
 		{"trailing data", `{"operation":"add","operands":[1,2]}{}`, 400, 0, "invalid_json"},
 		{"null body", `null`, 400, 0, "invalid_json"},
 		{"null operand", `{"operation":"add","operands":[null,2]}`, 400, 0, "invalid_json"},
@@ -95,17 +95,22 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder, v any) {
 	}
 }
 
-func TestMathFailureMessagesDistinguishNonRealAndOverflow(t *testing.T) {
-	for _, test := range []struct{ body, message string }{
-		{`{"operation":"power","operands":[-8,0.5]}`, "This calculation has no real-number result."},
-		{`{"operation":"multiply","operands":[1e308,10]}`, "That result is too large to show."},
+func TestSpecificErrorCodesAndMessages(t *testing.T) {
+	for _, test := range []struct {
+		body, code, message string
+		status              int
+	}{
+		{`{"operation":"power","operands":[-8,0.5]}`, "non_real_result", "The result is not a real number.", 422},
+		{`{"operation":"multiply","operands":[1e308,10]}`, "result_overflow", "The result exceeds the float64 range.", 422},
+		{`{"operation":"power","operands":[0,-1]}`, "division_by_zero", "Division by zero is undefined.", 422},
+		{`{"extra":1}`, "unknown_field", `Unknown field "extra".`, 400},
 	} {
 		rec := httptest.NewRecorder()
 		newTestServer().ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/calculate", strings.NewReader(test.body)))
 		var body errorResponse
 		decode(t, rec, &body)
-		if rec.Code != 422 || body.Error.Code != "result_out_of_range" || body.Error.Message != test.message {
-			t.Fatalf("got %d %+v, want specific message %q", rec.Code, body, test.message)
+		if rec.Code != test.status || body.Error.Code != test.code || body.Error.Message != test.message {
+			t.Fatalf("got %d %+v, want %d %s: %s", rec.Code, body, test.status, test.code, test.message)
 		}
 	}
 }

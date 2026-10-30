@@ -64,7 +64,7 @@ func withRecover(logger *slog.Logger, next http.Handler) http.Handler {
 		defer func() {
 			if v := recover(); v != nil {
 				logger.Error("panic", "value", v, "path", r.URL.Path)
-				writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+				writeError(w, http.StatusInternalServerError, "internal_error", "An internal error occurred.")
 			}
 		}()
 		next.ServeHTTP(w, r)

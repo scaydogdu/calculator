@@ -79,10 +79,11 @@ ok "whitespace around body" '  {"operation":"add","operands":[1,1]}  ' '.result 
 echo "## Math errors (422)"
 err "divide by zero" '{"operation":"divide","operands":[1,0]}' 422 division_by_zero
 err "zero divided by zero" '{"operation":"divide","operands":[0,0]}' 422 division_by_zero
+err "zero to negative power" '{"operation":"power","operands":[0,-1]}' 422 division_by_zero
 err "sqrt negative" '{"operation":"sqrt","operands":[-4]}' 422 negative_sqrt
-err "overflow multiply" '{"operation":"multiply","operands":[1e308,10]}' 422 result_out_of_range
-err "overflow power" '{"operation":"power","operands":[2,1024]}' 422 result_out_of_range
-err "NaN power" '{"operation":"power","operands":[-8,0.5]}' 422 result_out_of_range
+err "overflow multiply" '{"operation":"multiply","operands":[1e308,10]}' 422 result_overflow
+err "overflow power" '{"operation":"power","operands":[2,1024]}' 422 result_overflow
+err "NaN power" '{"operation":"power","operands":[-8,0.5]}' 422 non_real_result
 
 echo "## Request errors (400)"
 err "unknown operation" '{"operation":"modulo","operands":[1,2]}' 400 unknown_operation
@@ -95,7 +96,7 @@ err "malformed json" '{"operation":' 400 invalid_json
 err "string operand" '{"operation":"add","operands":["1",2]}' 400 invalid_json
 err "null operand element" '{"operation":"add","operands":[null,2]}' 400 invalid_json
 err "number beyond float64" '{"operation":"add","operands":[1e400,2]}' 400 invalid_json
-err "unknown field" '{"operation":"add","operands":[1,2],"extra":true}' 400 invalid_json
+err "unknown field" '{"operation":"add","operands":[1,2],"extra":true}' 400 unknown_field
 err "trailing data" '{"operation":"add","operands":[1,2]}{}' 400 invalid_json
 err "array body" '[1,2]' 400 invalid_json
 err "operation wrong type" '{"operation":1,"operands":[1,2]}' 400 invalid_json

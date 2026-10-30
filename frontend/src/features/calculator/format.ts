@@ -1,4 +1,7 @@
-// Twelve significant digits hide float noise such as 0.1 + 0.2 = 0.30000000000000004.
+// Keep rounded whole-number digits explicit as scientific notation.
 export function formatNumber(n: number): string {
-  return Number.isInteger(n) && Math.abs(n) < 1e15 ? String(n) : String(Number(n.toPrecision(12)));
+  if (Number.isInteger(n) && Math.abs(n) < 1e15) return String(n);
+  const [mantissa, exponent] = n.toPrecision(12).split('e');
+  const compact = mantissa.includes('.') ? mantissa.replace(/0+$/, '').replace(/\.$/, '') : mantissa;
+  return exponent === undefined ? String(Number(compact)) : `${compact}e${exponent}`;
 }

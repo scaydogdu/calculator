@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Calculator API
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Stateless arithmetic using IEEE-754 float64. Results must be finite.
     Request bodies are limited to 1 MiB (1,048,576 bytes), including whitespace.
@@ -35,7 +35,8 @@ paths:
       description: |
         Square root takes one operand; all other operations take two.
         Percentage means a percent of b: (a / 100) * b.
-        Power uses a raised to b. Non-real and overflowing results are rejected.
+        Power uses a raised to b. Zero raised to a negative power is division by zero.
+        Non-real and overflowing results have distinct error codes.
       requestBody:
         required: true
         content:
@@ -80,13 +81,13 @@ paths:
                 percentage:
                   value: {operation: percentage, operands: [15, 200], result: 30}
         '400':
-          description: Invalid JSON, unknown operation or incorrect operand count
+          description: Invalid JSON, unknown field, unknown operation or incorrect operand count
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: {code: invalid_operands, message: 'wrong number of operands: add takes 2, got 1'}
+                error: {code: invalid_operands, message: 'Incorrect number of operands for the operation.'}
         '405':
           description: Only POST is allowed
           headers:
@@ -100,7 +101,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: {code: method_not_allowed, message: use POST}
+                error: {code: method_not_allowed, message: Method must be POST.}
         '413':
           description: Request body exceeds 1 MiB
           content:
@@ -118,16 +119,16 @@ paths:
               examples:
                 divisionByZero:
                   value:
-                    error: {code: division_by_zero, message: division by zero}
+                    error: {code: division_by_zero, message: Division by zero is undefined.}
                 negativeSqrt:
                   value:
-                    error: {code: negative_sqrt, message: square root of a negative number}
+                    error: {code: negative_sqrt, message: Square root requires a non-negative operand.}
                 nonReal:
                   value:
-                    error: {code: result_out_of_range, message: This calculation has no real-number result.}
+                    error: {code: non_real_result, message: The result is not a real number.}
                 overflow:
                   value:
-                    error: {code: result_out_of_range, message: That result is too large to show.}
+                    error: {code: result_overflow, message: The result exceeds the float64 range.}
         '500':
           description: Unexpected server failure
           content:
@@ -135,7 +136,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                error: {code: internal_error, message: internal server error}
+                error: {code: internal_error, message: An internal error occurred.}
 components:
   schemas:
     Operand:
@@ -213,7 +214,7 @@ components:
           properties:
             code:
               type: string
-              enum: [invalid_json, unknown_operation, invalid_operands, method_not_allowed, request_too_large, division_by_zero, negative_sqrt, result_out_of_range, not_found, internal_error]
+              enum: [invalid_json, unknown_field, unknown_operation, invalid_operands, method_not_allowed, request_too_large, division_by_zero, negative_sqrt, non_real_result, result_overflow, not_found, internal_error]
             message:
               type: string
               minLength: 1
