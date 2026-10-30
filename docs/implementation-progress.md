@@ -16,3 +16,4 @@ Task 2: complete. HTTP tests observed failing before implementation; all domain 
 Task 3: complete. run() test first failed on missing run; then exposed the plan test leaving response bodies open at shutdown. Drained/closed responses before cancellation; go vet and all backend race tests pass.
 Task 4 Ruling: current Vite scaffold uses TypeScript 7 and oxlint; use ESLint as specified and TypeScript 6 supported by typescript-eslint. Pin Vitest and coverage to the same 5.0.5 version. Cost if wrong: future tool upgrades need validation.
 Task 4 Ruling: privileged login shell selected Node 23 instead of available Node 22; explicitly select Node 22 for npm commands. Cost if wrong: local shell still needs Node 22 in PATH.
+Task 4: complete. Scaffold typecheck, production build, and empty test invocation passed on Node 22. npm audit reports zero vulnerabilities.
