@@ -31,6 +31,9 @@ describe('calculator integration and accessibility', () => {
     const equals = screen.getByRole('button', { name: 'Equals' });
     expect(equals).toHaveFocus();
     expect(equals).toBeEnabled();
+    expect(equals).toHaveClass('key-pending');
+    expect(screen.getByRole('button', { name: 'All clear' })).not.toHaveClass('key-pending');
+    expect(screen.getByText('Calculating… Further input will be queued.')).toBeVisible();
     expect(equals).not.toHaveAttribute('aria-disabled');
     expect(result()).toHaveTextContent(/^3$/);
     await act(async () => finish(sum));
@@ -38,6 +41,7 @@ describe('calculator integration and accessibility', () => {
     expect(screen.getByLabelText('Expression')).toHaveTextContent('2 + 3 =');
     expect(equals).toHaveFocus();
     expect(equals).not.toHaveAttribute('aria-disabled');
+    expect(equals).not.toHaveClass('key-pending');
     expect(calculate).toHaveBeenCalledExactlyOnceWith({ operands: [2, 3], operators: ['add'] }, expect.any(AbortSignal));
   });
 

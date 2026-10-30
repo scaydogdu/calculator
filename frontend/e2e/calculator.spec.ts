@@ -209,3 +209,21 @@ test('square root after an operator transforms the selected operand', async ({ p
   await expect(page.getByRole('status', { name: 'Result' })).toHaveText('7');
   await expect(page.getByLabel('Expression')).toHaveText('3 + 4 =');
 });
+
+test('dims keys during a request and announces discarded input on error', async ({ page }) => {
+  let delayedRoute: Route | undefined;
+  let requests = 0;
+  await page.route('**/api/v1/evaluate', route => { requests += 1; delayedRoute = route; });
+  await page.keyboard.type('1/0=');
+  await expect.poll(() => !!delayedRoute).toBe(true);
+  const equals = page.getByRole('button', { name: 'Equals', exact: true });
+  await expect(equals).toHaveCSS('opacity', '0.55');
+  await expect(equals).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'All clear' })).toHaveCSS('opacity', '1');
+  await expect(page.getByText('Calculating… Further input will be queued.')).toBeVisible();
+  await page.keyboard.type('*2=');
+  await delayedRoute!.continue();
+  await expect(page.getByRole('alert')).toHaveText("You can't divide by zero. Queued input was discarded.");
+  await expect(equals).toHaveCSS('opacity', '1');
+  expect(requests).toBe(1);
+});

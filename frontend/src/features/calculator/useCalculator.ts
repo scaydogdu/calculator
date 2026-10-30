@@ -47,8 +47,13 @@ export function useCalculator(calculate: CalculateFn) {
       if (active.current !== request) return;
       clearTimeout(request.timer);
       active.current = null;
-      update(outcome);
-      if (outcome.type === 'failed') queued.current = [];
+      if (outcome.type === 'failed') {
+        const discarded = queued.current.length > 0 ? ' Queued input was discarded.' : '';
+        queued.current = [];
+        update({ ...outcome, message: outcome.message + discarded });
+      } else {
+        update(outcome);
+      }
       // Stop when replay starts another request; resume after its result.
       while (queued.current.length && !active.current) send(queued.current.shift()!);
     }

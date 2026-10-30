@@ -19,9 +19,9 @@ Backend tests passed with the race detector. They cover arithmetic and domain er
 
 | Metric | Coverage |
 |---|---:|
-| Lines | 99.32% (147/148) |
-| Statements | 98.83% (170/172) |
-| Branches | 97.81% (179/183) |
+| Lines | 99.33% (150/151) |
+| Statements | 98.85% (172/174) |
+| Branches | 97.88% (185/189) |
 | Functions | 96.87% (31/32) |
 
 All configured coverage thresholds passed: 95% lines, statements and functions; 90% branches. Tests exercise the API client, reducer, request lifecycle, keyboard interaction and error handling. The top-level `App` wrapper is not directly rendered; DOM bootstrap and test/setup files are excluded. Coverage measures automated test execution, not exhaustive browser behavior.

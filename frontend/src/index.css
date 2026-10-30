@@ -51,6 +51,7 @@ button { font: inherit; }
 .key-fn { background: var(--function); color: var(--muted); font-size: 19px; }
 .key-op { background: var(--operator); }
 .key-equals { background: var(--accent); color: var(--accent-text); font-size: 28px; }
+.key-pending { opacity: 0.55; }
 .key-wide { grid-column: span 2; }
 .key-tall { grid-row: span 2; }
 .key[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }

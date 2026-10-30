@@ -12,7 +12,7 @@ export function Display({ expression, entry, error, busy }: DisplayProps) {
       <output className={`value${entry.length > 12 ? ' value-long' : ''}`} aria-label="Result" aria-live="polite">{entry}</output>
       <div className="display-message">
         {error && <p className="error" role="alert">{error}</p>}
-        {busy && <p className="loading">Calculating…</p>}
+        {busy && <p className="loading">Calculating… Further input will be queued.</p>}
       </div>
     </div>
   );

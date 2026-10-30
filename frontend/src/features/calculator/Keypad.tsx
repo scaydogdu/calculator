@@ -5,16 +5,17 @@ interface KeypadProps {
   onAction: (action: InputAction) => void;
   operator: BinaryOp | null;
   overwrite: boolean;
+  busy: boolean;
 }
 
-export function Keypad({ onAction, operator, overwrite }: KeypadProps) {
+export function Keypad({ onAction, operator, overwrite, busy }: KeypadProps) {
   return (
     <div className="keypad" aria-label="Calculator keys">
       {KEYS.map((key) => (
         <button
           key={key.id}
           type="button"
-          className={`key key-${key.kind}${key.span ? ` key-${key.span}` : ''}`}
+          className={`key key-${key.kind}${key.span ? ` key-${key.span}` : ''}${busy && key.action.type !== 'clear' ? ' key-pending' : ''}`}
           aria-label={key.ariaLabel}
           aria-pressed={key.action.type === 'operator' ? operator === key.action.op && overwrite : undefined}
           onClick={() => onAction(key.action)}

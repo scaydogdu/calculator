@@ -151,7 +151,7 @@ describe('queued input', () => {
     if (outcome !== 'unmount') {
       expect(result.current.state.pending).toBeNull();
       if (outcome === 'clear') expect(result.current.state.entry).toBe('0');
-      else expect(result.current.state.error).not.toBeNull();
+      else expect(result.current.state.error).toContain('Queued input was discarded.');
       // A later valid request must not replay the discarded continuation.
       await act(async () => enterSum());
       await act(async () => finish(sum));
