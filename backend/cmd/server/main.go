@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aydogdu/calculator/backend/internal/httpapi"
+	"github.com/scaydogdu/calculator/backend/internal/httpapi"
 )
 
 func main() {

@@ -5,30 +5,30 @@ Measured 2026-10-30 after the review fixes, request timeout and consistent resul
 ## Backend
 
 ```text
-ok  github.com/aydogdu/calculator/backend/cmd/server                  (cached)  coverage: 72.7% of statements
-ok  github.com/aydogdu/calculator/backend/internal/calculator        (cached)  coverage: 100.0% of statements
-ok  github.com/aydogdu/calculator/backend/internal/httpapi           (cached)  coverage: 93.8% of statements
+ok  github.com/scaydogdu/calculator/backend/cmd/server                  (cached)  coverage: 72.7% of statements
+ok  github.com/scaydogdu/calculator/backend/internal/calculator        (cached)  coverage: 100.0% of statements
+ok  github.com/scaydogdu/calculator/backend/internal/httpapi           (cached)  coverage: 93.8% of statements
 total: (statements) 90.9%
 ```
 
 ```text
-github.com/aydogdu/calculator/backend/cmd/server/main.go:20:			main			0.0%
-github.com/aydogdu/calculator/backend/cmd/server/main.go:30:			run			94.1%
-github.com/aydogdu/calculator/backend/internal/calculator/calculator.go:65:	Calculate		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/calculate.go:26:		handleCalculate		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/calculate.go:70:		classify		85.7%
-github.com/aydogdu/calculator/backend/internal/httpapi/calculate.go:87:		writeDecodeError	100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/respond.go:17:		writeJSON		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/respond.go:23:		writeError		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/routes.go:10:		addRoutes		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/routes.go:21:		handleHealth		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/routes.go:27:		handleMethodNotAllowed	100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/routes.go:34:		handleNotFound		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/routes.go:43:		Open			72.2%
-github.com/aydogdu/calculator/backend/internal/httpapi/server.go:12:		NewServer		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/server.go:26:		WriteHeader		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/server.go:31:		withLogging		100.0%
-github.com/aydogdu/calculator/backend/internal/httpapi/server.go:40:		withRecover		100.0%
+github.com/scaydogdu/calculator/backend/cmd/server/main.go:20:			main			0.0%
+github.com/scaydogdu/calculator/backend/cmd/server/main.go:30:			run			94.1%
+github.com/scaydogdu/calculator/backend/internal/calculator/calculator.go:65:	Calculate		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/calculate.go:26:		handleCalculate		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/calculate.go:70:		classify		85.7%
+github.com/scaydogdu/calculator/backend/internal/httpapi/calculate.go:87:		writeDecodeError	100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/respond.go:17:		writeJSON		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/respond.go:23:		writeError		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/routes.go:10:		addRoutes		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/routes.go:21:		handleHealth		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/routes.go:27:		handleMethodNotAllowed	100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/routes.go:34:		handleNotFound		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/routes.go:43:		Open			72.2%
+github.com/scaydogdu/calculator/backend/internal/httpapi/server.go:12:		NewServer		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/server.go:26:		WriteHeader		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/server.go:31:		withLogging		100.0%
+github.com/scaydogdu/calculator/backend/internal/httpapi/server.go:40:		withRecover		100.0%
 total:										(statements)		90.9%
 ```
 

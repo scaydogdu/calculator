@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aydogdu/calculator/backend/internal/calculator"
+	"github.com/scaydogdu/calculator/backend/internal/calculator"
 )
 
 const maxBodyBytes = 1 << 20

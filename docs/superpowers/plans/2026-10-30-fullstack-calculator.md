@@ -94,7 +94,7 @@ Expected: `go version go1.2x.x darwin/arm64`. Use that `1.2x` in `go.mod` and in
 ```bash
 cd /Users/aydogdu/Documents/Claud/calculator
 git init -b main
-mkdir -p backend && cd backend && go mod init github.com/aydogdu/calculator/backend
+mkdir -p backend && cd backend && go mod init github.com/scaydogdu/calculator/backend
 ```
 
 - [x] **Step 3: Write `.gitignore`**
@@ -514,7 +514,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/aydogdu/calculator/backend/internal/calculator"
+	"github.com/scaydogdu/calculator/backend/internal/calculator"
 )
 
 const maxBodyBytes = 1 << 20
@@ -814,7 +814,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/aydogdu/calculator/backend/internal/httpapi"
+	"github.com/scaydogdu/calculator/backend/internal/httpapi"
 )
 
 func main() {
